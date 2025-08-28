@@ -754,11 +754,7 @@ export default function TennisLadderScheduler() {
     try {
       // Load all teams' availability for the user's current ladder
       const ladderId = ladderInfo?.currentLadder?.id;
-      const weekStartISO = weekStart.toISOString();
-      console.log('Frontend weekStart:', weekStart);
-      console.log('Frontend weekStart ISO:', weekStartISO);
-      const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
-      console.log('API URL:', url);
+      const url = `/api/teams/availability?weekStart=${weekStart.toISOString()}${ladderId ? `&ladderId=${ladderId}` : ''}`;
       const teamsResponse = await fetch(url);
       if (teamsResponse.ok) {
         const teamsData = await teamsResponse.json();
@@ -1548,7 +1544,23 @@ function AvailabilityGrid({
         const member2Available = team.member2?.availability.includes(slotKey) || false;
         const teamAvailable = member1Available && member2Available;
         
-        return teamAvailable;
+        if (!teamAvailable) return false;
+        
+        // Check if we already have a confirmed match with this team in this ladder
+        const myTeamId = teamsData.myTeamId;
+        if (myTeamId) {
+          const [team1Id, team2Id] = [myTeamId, team.id].sort();
+          const existingMatch = teamsData.matches?.find(match => 
+            match.team1Id === team1Id && match.team2Id === team2Id && match.completed !== true
+          );
+          
+          if (existingMatch) {
+            console.log('Excluding team due to existing match:', team.id, existingMatch);
+            return false; // Already have a match with this team
+          }
+        }
+        
+        return true;
       });
 
       return availableTeams.map(team => ({
