@@ -1,7 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import Link from "next/link";
 
 export const metadata = { title: "Tennis Ladder", description: "Weekly scheduler" };

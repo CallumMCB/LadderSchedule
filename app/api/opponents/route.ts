@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -96,7 +96,7 @@ export async function GET() {
     });
 
     // Find current user's team
-    const currentUser = users.find(u => u.email === session.user.email);
+    const currentUser = users.find(u => u.email === session.user?.email);
     const myTeamId = currentUser?.partner 
       ? [currentUser.id, currentUser.partnerId!].sort().join('-')
       : currentUser?.id;

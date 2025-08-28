@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,6 +31,6 @@ export async function POST(req: NextRequest) {
     
   } catch (error) {
     console.error("Auth test error:", error);
-    return NextResponse.json({ error: "Internal error", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal error", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

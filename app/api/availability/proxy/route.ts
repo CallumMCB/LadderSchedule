@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function mondayStart(dateISO: string) {
@@ -67,13 +67,13 @@ export async function POST(req: NextRequest) {
       });
 
       // Add new available slots (excluding any that the user has set themselves)
-      const newAvailableSlots = availableSlotDates.filter(date => 
+      const newAvailableSlots = availableSlotDates.filter((date: Date) => 
         !userOwnSlots.includes(date.toISOString())
       );
 
       if (newAvailableSlots.length) {
         await tx.availability.createMany({
-          data: newAvailableSlots.map((startAt) => ({ 
+          data: newAvailableSlots.map((startAt: Date) => ({ 
             userId: targetUserId, 
             startAt, 
             weekStart,
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
 
       // Handle unavailable slots: delete any proxy-set availability for these slots
       // (but preserve user's own slots even if they're marked unavailable by proxy)
-      const unavailableSlotsToDelete = unavailableSlotDates.filter(date => 
+      const unavailableSlotsToDelete = unavailableSlotDates.filter((date: Date) => 
         !userOwnSlots.includes(date.toISOString())
       );
 

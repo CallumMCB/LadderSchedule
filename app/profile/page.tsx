@@ -36,6 +36,11 @@ export default function ProfilePage() {
     allLadders: Array<{ id: string; name: string; number: number; endDate: string }>;
   }>({ allLadders: [] });
   const [selectedLadderId, setSelectedLadderId] = useState("");
+  
+  // Create new ladder state
+  const [showCreateLadder, setShowCreateLadder] = useState(false);
+  const [newLadderName, setNewLadderName] = useState("");
+  const [newLadderEndDate, setNewLadderEndDate] = useState("");
 
   useEffect(() => {
     if (session?.user) {
@@ -132,6 +137,41 @@ export default function ProfilePage() {
     }
   }
 
+  async function createNewLadder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newLadderName.trim() || !newLadderEndDate) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch('/api/ladders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: newLadderName.trim(),
+          endDate: newLadderEndDate
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage(`Ladder "${newLadderName}" created successfully! You've been assigned to it.`);
+        await loadLadderInfo(); // Reload to get updated info
+        setShowCreateLadder(false);
+        setNewLadderName("");
+        setNewLadderEndDate("");
+        setTimeout(() => setMessage(""), 4000);
+      } else {
+        setMessage(data.error || "Failed to create ladder");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (error) {
+      setMessage("Network error");
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function updateProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -457,27 +497,83 @@ export default function ProfilePage() {
               <label className="block text-sm font-medium mb-2">
                 Select Ladder
               </label>
-              <div className="flex gap-2">
-                <select 
-                  value={selectedLadderId} 
-                  onChange={(e) => setSelectedLadderId(e.target.value)}
-                  className="flex-1 h-9 px-3 rounded-lg border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                >
-                  <option value="">Select a ladder...</option>
-                  {ladderInfo.allLadders.map(ladder => (
-                    <option key={ladder.id} value={ladder.id}>
-                      {ladder.name} (Ends: {new Date(ladder.endDate).toLocaleDateString()})
-                    </option>
-                  ))}
-                </select>
-                <Button 
-                  onClick={updateLadder} 
-                  disabled={!selectedLadderId || selectedLadderId === ladderInfo.currentLadder?.id || loading}
-                  variant="outline"
-                >
-                  {loading ? "Updating..." : "Update"}
-                </Button>
-              </div>
+              {!showCreateLadder ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <select 
+                      value={selectedLadderId} 
+                      onChange={(e) => setSelectedLadderId(e.target.value)}
+                      className="flex-1 h-9 px-3 rounded-lg border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                    >
+                      <option value="">Select a ladder...</option>
+                      {ladderInfo.allLadders.map(ladder => (
+                        <option key={ladder.id} value={ladder.id}>
+                          {ladder.name} (Ends: {new Date(ladder.endDate).toLocaleDateString()})
+                        </option>
+                      ))}
+                    </select>
+                    <Button 
+                      onClick={updateLadder} 
+                      disabled={!selectedLadderId || selectedLadderId === ladderInfo.currentLadder?.id || loading}
+                      variant="outline"
+                    >
+                      {loading ? "Updating..." : "Join"}
+                    </Button>
+                  </div>
+                  <div className="text-center">
+                    <Button 
+                      onClick={() => setShowCreateLadder(true)}
+                      variant="outline"
+                      className="text-sm"
+                    >
+                      + Create New Ladder
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={createNewLadder} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Ladder Name</label>
+                    <Input 
+                      value={newLadderName} 
+                      onChange={(e) => setNewLadderName(e.target.value)}
+                      placeholder="e.g., Summer League 2025"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End Date</label>
+                    <Input 
+                      type="date"
+                      value={newLadderEndDate} 
+                      onChange={(e) => setNewLadderEndDate(e.target.value)}
+                      required
+                      min={new Date().toISOString().split('T')[0]} // Today or later
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      type="submit"
+                      disabled={!newLadderName.trim() || !newLadderEndDate || loading}
+                    >
+                      {loading ? "Creating..." : "Create & Join Ladder"}
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowCreateLadder(false);
+                        setNewLadderName("");
+                        setNewLadderEndDate("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
               <p className="text-xs text-gray-500 mt-1">
                 ⚠️ <strong>Warning:</strong> Changing ladders will clear all your matches, availability, and scores. You and your partner will be moved to the new ladder as a fresh team.
               </p>

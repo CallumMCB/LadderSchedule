@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function mondayStart(dateISO: string) {
@@ -114,15 +114,15 @@ export async function GET(req: NextRequest) {
     mergedUsers.forEach(user => {
       if (processedUsers.has(user.id)) return;
 
-      const userAvailability = user.availability.map(a => a.startAt.toISOString());
-      const userSetByUserIds = user.availability.map(a => a.setByUserId || user.id);
+      const userAvailability = user.availability.map((a: any) => a.startAt.toISOString());
+      const userSetByUserIds = user.availability.map((a: any) => a.setByUserId || user.id);
       
       if (user.partner) {
         // This is a team
         const partner = mergedUsers.find(u => u.id === user.partnerId);
         if (partner && !processedUsers.has(partner.id)) {
-          const partnerAvailability = partner.availability.map(a => a.startAt.toISOString());
-          const partnerSetByUserIds = partner.availability.map(a => a.setByUserId || partner.id);
+          const partnerAvailability = partner.availability.map((a: any) => a.startAt.toISOString());
+          const partnerSetByUserIds = partner.availability.map((a: any) => a.setByUserId || partner.id);
           
           teams.push({
             id: [user.id, partner.id].sort().join('-'),
@@ -140,8 +140,7 @@ export async function GET(req: NextRequest) {
               availability: partnerAvailability,
               setByUserIds: partnerSetByUserIds
             },
-            color: teamColors[colorIndex % teamColors.length],
-            isComplete: true
+            color: teamColors[colorIndex % teamColors.length]
           });
           
           processedUsers.add(user.id);
@@ -166,9 +165,7 @@ export async function GET(req: NextRequest) {
             availability: userAvailability, // Same availability for both rows
             setByUserIds: userSetByUserIds
           },
-          color: teamColors[colorIndex % teamColors.length],
-          isComplete: false,
-          lookingForPartner: true
+          color: teamColors[colorIndex % teamColors.length]
         });
         
         processedUsers.add(user.id);

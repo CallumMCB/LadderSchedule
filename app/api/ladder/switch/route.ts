@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -37,11 +37,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Already in this ladder" });
     }
     
-    const usersToMove = [currentUser];
+    const usersToMove: typeof currentUser[] = [currentUser];
     if (currentUser.partnerId) {
-      // Get the full partner record, not just the relation
+      // Get the full partner record with same structure as currentUser
       const partnerUser = await prisma.user.findUnique({
-        where: { id: currentUser.partnerId }
+        where: { id: currentUser.partnerId },
+        include: { 
+          partner: true,
+          ladder: true
+        }
       });
       if (partnerUser) {
         usersToMove.push(partnerUser);
@@ -72,7 +76,7 @@ export async function POST(req: NextRequest) {
       }
       
       // Delete all matches involving these team IDs
-      for (const teamId of teamIdsToDelete) {
+      for (const teamId of Array.from(teamIdsToDelete)) {
         await tx.match.deleteMany({
           where: {
             OR: [
