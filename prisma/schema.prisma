@@ -1,0 +1,76 @@
+generator client {
+provider = "prisma-client-js"
+}
+
+datasource db {
+provider = "postgresql"
+url = env("DATABASE_URL")
+}
+
+model User {
+id String @id @default(cuid())
+email String @unique
+name String?
+password String // hashed (bcrypt)
+phone String? // Contact phone number
+resetToken String? // Password reset token
+resetTokenExpiry DateTime? // Token expiry time
+
+// Partner link (one-to-one). Unique helps avoid being linked to multiple partners.
+partnerId String? @unique
+partner User? @relation("PartnerLink", fields: [partnerId], references: [id])
+partneredBy User? @relation("PartnerLink")
+
+// Ladder assignment
+ladderId String? // Which ladder this user/team belongs to
+ladder Ladder? @relation(fields: [ladderId], references: [id])
+
+availability Availability[]
+setAvailabilityFor Availability[] @relation("SetByUser")
+createdAt DateTime @default(now())
+}
+
+model Ladder {
+id String @id @default(cuid())
+name String // e.g., "Ladder 1", "Ladder A", etc.
+number Int @unique // Ladder number for ordering
+endDate DateTime // When this ladder season ends
+isActive Boolean @default(true) // Whether this ladder is currently active
+users User[]
+matches Match[]
+createdAt DateTime @default(now())
+}
+
+model Availability {
+id String @id @default(cuid())
+userId String
+startAt DateTime // 30-min slot start (stored as UTC)
+weekStart DateTime // Monday 00:00 UTC for the week
+setByUserId String? // ID of user who set this availability (null if set by self)
+user User @relation(fields: [userId], references: [id])
+setByUser User? @relation("SetByUser", fields: [setByUserId], references: [id])
+
+@@unique([userId, startAt])
+@@index([userId, weekStart])
+}
+
+model Match {
+id String @id @default(cuid())
+startAt DateTime // Match time (stored as UTC)
+team1Id String // First team ID (sorted for consistency)
+team2Id String // Second team ID
+confirmed Boolean @default(false)
+confirmedAt DateTime @default(now())
+createdAt DateTime @default(now())
+team1Score Int? // Score for team1
+team2Score Int? // Score for team2
+completed Boolean @default(false) // Whether the match has been played and scored
+
+// Ladder assignment
+ladderId String? // Which ladder this match belongs to
+ladder Ladder? @relation(fields: [ladderId], references: [id])
+
+@@unique([startAt, team1Id, team2Id])
+@@index([startAt])
+@@index([ladderId])
+}

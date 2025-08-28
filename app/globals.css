@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+--muted: 240 5% 96%;
+--muted-foreground: 220 9% 46%;
+}
+
+html, body { height: 100%; }
+body { @apply bg-neutral-50 text-neutral-900 antialiased; }
+
+button, [role="button"], input { @apply focus:outline-none focus:ring-2 focus:ring-neutral-900/10; }
+.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.bg-muted { background-color: hsl(var(--muted)); }
+.hover\:bg-muted:hover { background-color: hsl(var(--muted)); }
+.odd\:bg-muted\/20:nth-child(odd) { background-color: rgba(243, 244, 246, 0.5); }
+.bg-muted\/50 { background-color: rgba(243, 244, 246, 0.5); }
