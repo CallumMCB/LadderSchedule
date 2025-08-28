@@ -1425,15 +1425,22 @@ function AvailabilityGrid({
     const isAfterLadderEnd = ladderEndDate && slotTime >= ladderEndDate;
 
     // Check if there's a confirmed match for this slot
-    const confirmedMatch = teamsData.matches?.find(match => match.startAt === slotKey);
+    // Use flexible time matching to handle potential timezone/format differences
+    const confirmedMatch = teamsData.matches?.find(match => {
+      const matchTime = new Date(match.startAt).getTime();
+      const slotTime = new Date(slotKey).getTime();
+      return matchTime === slotTime;
+    });
     
     // Debug logging for confirmed matches and time matching
     if (teamsData.matches && teamsData.matches.length > 0) {
-      console.log('Slot key:', slotKey);
+      console.log('Slot key:', slotKey, 'timestamp:', new Date(slotKey).getTime());
       console.log('Available matches:', teamsData.matches.map(m => ({
         id: m.id,
         startAt: m.startAt,
-        matches: m.startAt === slotKey
+        timestamp: new Date(m.startAt).getTime(),
+        stringMatches: m.startAt === slotKey,
+        timestampMatches: new Date(m.startAt).getTime() === new Date(slotKey).getTime()
       })));
     }
     
