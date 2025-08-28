@@ -757,7 +757,11 @@ export default function TennisLadderScheduler() {
       console.log('Calendar weekStart state:', weekStart);
       console.log('Current date:', new Date());
       console.log('Expected week start (Monday):', startOfWeekMonday(new Date()));
-      const weekStartISO = weekStart.toISOString();
+      // Fix timezone issue by creating a proper Monday date in UTC
+      const weekStartUTC = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+      const weekStartISO = weekStartUTC.toISOString();
+      console.log('Original weekStart:', weekStart);
+      console.log('UTC weekStart:', weekStartUTC);  
       console.log('Sending weekStart ISO:', weekStartISO);
       const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
       const teamsResponse = await fetch(url);
