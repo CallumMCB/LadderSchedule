@@ -83,9 +83,8 @@ export default function ScoringPage() {
 
   async function loadTeamsAndMatches() {
     try {
-      // Load teams from current week to get team structure
-      const currentWeek = startOfWeekMonday(new Date()).toISOString();
-      const teamsResponse = await fetch(`/api/teams/availability?weekStart=${currentWeek}&ladderId=${selectedLadderId}`);
+      // Load all teams/opponents in the ladder
+      const teamsResponse = await fetch(`/api/opponents?ladderId=${selectedLadderId}`);
       
       // Load all matches across all weeks for selected ladder
       const allMatchesResponse = await fetch(`/api/matches/all?ladderId=${selectedLadderId}`);
