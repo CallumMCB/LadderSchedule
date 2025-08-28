@@ -754,7 +754,12 @@ export default function TennisLadderScheduler() {
     try {
       // Load all teams' availability for the user's current ladder
       const ladderId = ladderInfo?.currentLadder?.id;
-      const url = `/api/teams/availability?weekStart=${weekStart.toISOString()}${ladderId ? `&ladderId=${ladderId}` : ''}`;
+      console.log('Calendar weekStart state:', weekStart);
+      console.log('Current date:', new Date());
+      console.log('Expected week start (Monday):', startOfWeekMonday(new Date()));
+      const weekStartISO = weekStart.toISOString();
+      console.log('Sending weekStart ISO:', weekStartISO);
+      const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
       const teamsResponse = await fetch(url);
       if (teamsResponse.ok) {
         const teamsData = await teamsResponse.json();
@@ -1422,7 +1427,16 @@ function AvailabilityGrid({
     // Check if there's a confirmed match for this slot
     const confirmedMatch = teamsData.matches?.find(match => match.startAt === slotKey);
     
-    // Debug logging for confirmed matches
+    // Debug logging for confirmed matches and time matching
+    if (teamsData.matches && teamsData.matches.length > 0) {
+      console.log('Slot key:', slotKey);
+      console.log('Available matches:', teamsData.matches.map(m => ({
+        id: m.id,
+        startAt: m.startAt,
+        matches: m.startAt === slotKey
+      })));
+    }
+    
     if (confirmedMatch) {
       console.log('Found confirmed match for slot:', slotKey, confirmedMatch);
     }
@@ -1555,7 +1569,13 @@ function AvailabilityGrid({
           );
           
           if (existingMatch) {
-            console.log('Excluding team due to existing match:', team.id, existingMatch);
+            console.log('Excluding team due to existing match:', {
+              teamId: team.id,
+              myTeamId: myTeamId,
+              team1Id,
+              team2Id,
+              existingMatch
+            });
             return false; // Already have a match with this team
           }
         }

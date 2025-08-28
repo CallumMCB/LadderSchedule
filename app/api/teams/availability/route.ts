@@ -6,10 +6,15 @@ import { prisma } from "@/lib/prisma";
 export const runtime = 'nodejs';
 
 function mondayStart(dateISO: string) {
+  console.log('API: Received dateISO:', dateISO);
   const d = new Date(dateISO);
+  console.log('API: Parsed date:', d);
+  console.log('API: Day of week:', d.getDay(), '(0=Sunday, 1=Monday, etc)');
   const day = (d.getDay() + 6) % 7; // 0=Mon
+  console.log('API: Days to subtract:', day);
   d.setDate(d.getDate() - day);
   d.setHours(0, 0, 0, 0);
+  console.log('API: Computed week start:', d);
   return d;
 }
 
