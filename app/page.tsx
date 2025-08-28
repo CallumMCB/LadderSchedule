@@ -754,7 +754,11 @@ export default function TennisLadderScheduler() {
     try {
       // Load all teams' availability for the user's current ladder
       const ladderId = ladderInfo?.currentLadder?.id;
-      const url = `/api/teams/availability?weekStart=${weekStart.toISOString()}${ladderId ? `&ladderId=${ladderId}` : ''}`;
+      const weekStartISO = weekStart.toISOString();
+      console.log('Frontend weekStart:', weekStart);
+      console.log('Frontend weekStart ISO:', weekStartISO);
+      const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
+      console.log('API URL:', url);
       const teamsResponse = await fetch(url);
       if (teamsResponse.ok) {
         const teamsData = await teamsResponse.json();
