@@ -45,6 +45,7 @@ CREATE TABLE "Match" (
     "team2Id" TEXT NOT NULL,
     "startAt" TIMESTAMP(3) NOT NULL,
     "confirmed" BOOLEAN NOT NULL DEFAULT false,
+    "confirmedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "completed" BOOLEAN NOT NULL DEFAULT false,
     "team1Score" INTEGER,
     "team2Score" INTEGER,
@@ -80,3 +81,6 @@ INSERT INTO "Ladder" ("id", "name", "number", "endDate", "isActive") VALUES
 ('clad1', 'Ladder 1', 1, '2025-10-01 00:00:00', true),
 ('clad2', 'Ladder 2', 2, '2025-10-01 00:00:00', true),
 ('clad3', 'Ladder 3', 3, '2025-10-01 00:00:00', true);
+
+-- Migration: Add missing confirmedAt column (run if column doesn't exist)
+-- ALTER TABLE "Match" ADD COLUMN "confirmedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

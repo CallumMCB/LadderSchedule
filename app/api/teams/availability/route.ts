@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
 
     // Get confirmed matches for this week (filter by ladder if provided)
     console.log('Looking for matches between:', weekStart, 'and', new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000));
+    console.log('Ladder filter:', ladderId);
     const matchWhere: any = {
       startAt: {
         gte: weekStart,
@@ -92,10 +93,18 @@ export async function GET(req: NextRequest) {
     if (ladderId) {
       matchWhere.ladderId = ladderId;
     }
+    console.log('Match query:', matchWhere);
     const matches = await prisma.match.findMany({
       where: matchWhere
     });
-    console.log('Found matches:', matches.length, matches);
+    console.log('Found matches:', matches.length, matches.map(m => ({
+      id: m.id,
+      startAt: m.startAt.toISOString(),
+      team1Id: m.team1Id,
+      team2Id: m.team2Id,
+      ladderId: m.ladderId,
+      confirmed: m.confirmed
+    })));
 
     // Build teams (avoid duplicates)
     const teams: Array<{
