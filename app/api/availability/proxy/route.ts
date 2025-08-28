@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = 'nodejs';
+
 function mondayStart(dateISO: string) {
   const d = new Date(dateISO);
   const day = (d.getDay() + 6) % 7; // 0=Mon
