@@ -200,7 +200,7 @@ export default function TennisLadderScheduler() {
           teams: data.teams,
           myTeamId: data.myTeamId,
           currentUserId: data.currentUserId,
-          matches: currentWeekMatches
+          matches: allMatches // Use all matches, not just current week
         });
       }
     } catch (error) {
@@ -232,7 +232,7 @@ export default function TennisLadderScheduler() {
         teams: weekData.teams,
         myTeamId: weekData.myTeamId,
         currentUserId: weekData.currentUserId,
-        matches: currentWeekMatches
+        matches: allMatches // Use all matches, not just current week
       });
     } else {
       // If we don't have availability data for this week, load it
@@ -513,28 +513,58 @@ export default function TennisLadderScheduler() {
 
     if (actingAsTeam) {
       // When acting on behalf, update proxy state with three-state cycle
-      const isAvailable = proxyAvail.has(key);
-      const isUnavailable = proxyUnavail.has(key);
-      console.log('Acting on behalf - slot:', key, 'current proxy state:', { isAvailable, isUnavailable });
+      // First, determine the current actual state of the target team member
+      const team = teamsData.teams.find(t => t.id === actingAsTeam);
+      let currentActualAvailable = false;
       
-      if (!isAvailable && !isUnavailable) {
-        // Normal → Available
-        setProxyAvail(prev => new Set(prev).add(key));
-      } else if (isAvailable && !isUnavailable) {
-        // Available → Unavailable 
+      if (team) {
+        if (actingAsPlayer === team.member1.id) {
+          currentActualAvailable = team.member1.availability.includes(key);
+        } else if (actingAsPlayer === team.member2?.id) {
+          currentActualAvailable = team.member2?.availability.includes(key) || false;
+        } else if (!actingAsPlayer) {
+          // Acting for both members - consider available if both are available
+          const member1Available = team.member1.availability.includes(key);
+          const member2Available = team.member2?.availability.includes(key) || false;
+          currentActualAvailable = member1Available && member2Available;
+        }
+      }
+      
+      // Check proxy state modifications
+      const hasProxyAvailable = proxyAvail.has(key);
+      const hasProxyUnavailable = proxyUnavail.has(key);
+      
+      // Determine effective current state (actual + proxy modifications)
+      let effectiveAvailable = currentActualAvailable;
+      if (hasProxyAvailable) effectiveAvailable = true;
+      if (hasProxyUnavailable) effectiveAvailable = false;
+      
+      console.log('Acting on behalf - slot:', key, 'states:', { 
+        currentActualAvailable, 
+        hasProxyAvailable, 
+        hasProxyUnavailable, 
+        effectiveAvailable 
+      });
+      
+      // Three-state cycle starting from effective current state
+      if (effectiveAvailable) {
+        // Available → Unavailable
         setProxyAvail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
         setProxyUnavail(prev => new Set(prev).add(key));
-      } else {
-        // Unavailable → Normal
+      } else if (hasProxyUnavailable) {
+        // Unavailable → Normal (remove all proxy modifications)
         setProxyUnavail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
+      } else {
+        // Normal → Available
+        setProxyAvail(prev => new Set(prev).add(key));
       }
     } else {
       // Normal behavior for my own team
