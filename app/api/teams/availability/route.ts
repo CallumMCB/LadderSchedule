@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
       member1: { id: string; email: string; name?: string; availability: string[]; setByUserIds: string[] };
       member2?: { id: string; email: string; name?: string; availability: string[]; setByUserIds: string[] };
       color: string;
+      lookingForPartner?: boolean;
     }> = [];
 
     const processedUsers = new Set<string>();
