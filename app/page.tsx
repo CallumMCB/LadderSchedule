@@ -2262,8 +2262,7 @@ function AvailabilityGrid({
                 const myAvailIndex = myTeamObj.member1.availability.indexOf(slotKey);
                 const partnerAvailIndex = myTeamObj.member2?.availability.indexOf(slotKey) || -1;
                 
-                mySetByProxy = (myAvailIndex >= 0 && myTeamObj.member1.setByUserIds[myAvailIndex] !== myTeamObj.member1.id) || myAvailSetByProxy.has(slotKey);
-                partnerSetByProxy = (partnerAvailIndex >= 0 && myTeamObj.member2?.setByUserIds[partnerAvailIndex] !== myTeamObj.member2?.id) || partnerAvailSetByProxy.has(slotKey);
+                mySetByProxy = (myAvailIndex >= 0 && myTeamObj.member1.setByUserIds[myAvailIndex] !== myTeamObj.member1.id) || myAvailSetByProxy.has(slotKey);                partnerSetByProxy = (partnerAvailIndex >= 0 && myTeamObj.member2?.setByUserIds[partnerAvailIndex] !== myTeamObj.member2?.id) || partnerAvailSetByProxy.has(slotKey);
               }
               
               return (
