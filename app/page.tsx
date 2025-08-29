@@ -592,68 +592,46 @@ export default function TennisLadderScheduler() {
         partnerSlotSetByProxy = partnerAvailIndex >= 0 && myTeamObj.member2?.setByUserIds[partnerAvailIndex] !== myTeamObj.member2?.id;
       }
       
-      // If either slot was set by proxy, allow taking ownership by cycling through states
-      if (mySlotSetByProxy || partnerSlotSetByProxy) {
-        // This slot has proxy data - cycle through states and take ownership
-        if (!isAvailable && !isUnavailable) {
-          // Normal → Available (take ownership)
-          setMyAvail(prev => {
-            const newSet = new Set(prev).add(key);
-            // Check for matches if both team members are available
-            if (partnerAvail.has(key)) {
-              setTimeout(() => checkForMatches(key, true, true), 100);
-            }
-            return newSet;
-          });
-          // Mark this slot as taken over from proxy
+      // Determine if this click should trigger proxy takeover logic
+      const isProxyTakeover = mySlotSetByProxy || partnerSlotSetByProxy;
+      
+      // Cycle through states (same logic for both proxy and normal, but track proxy takeovers)
+      if (!isAvailable && !isUnavailable) {
+        // Normal → Available
+        setMyAvail(prev => {
+          const newSet = new Set(prev).add(key);
+          // Check for matches if both team members are available
+          if (partnerAvail.has(key)) {
+            setTimeout(() => checkForMatches(key, true, true), 100);
+          }
+          return newSet;
+        });
+        // Mark as takeover if this was set by proxy
+        if (isProxyTakeover) {
           setProxyTakeoverSlots(prev => new Set(prev).add(key));
-        } else if (isAvailable && !isUnavailable) {
-          // Available → Unavailable (take ownership)
-          setMyAvail(prev => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
-          setMyUnavail(prev => new Set(prev).add(key));
-          // Mark this slot as taken over from proxy
+        }
+      } else if (isAvailable && !isUnavailable) {
+        // Available → Unavailable
+        setMyAvail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setMyUnavail(prev => new Set(prev).add(key));
+        // Mark as takeover if this was set by proxy
+        if (isProxyTakeover) {
           setProxyTakeoverSlots(prev => new Set(prev).add(key));
-        } else {
-          // Unavailable → Normal (remove ownership)
-          setMyUnavail(prev => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
-          // Remove from proxy takeover tracking since we're going back to normal
-          setProxyTakeoverSlots(prev => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
         }
       } else {
-        // Normal behavior for slots not set by proxy
-        if (!isAvailable && !isUnavailable) {
-          // Normal → Available
-          setMyAvail(prev => {
-            const newSet = new Set(prev).add(key);
-            // Check for matches if both team members are available
-            if (partnerAvail.has(key)) {
-              setTimeout(() => checkForMatches(key, true, true), 100);
-            }
-            return newSet;
-          });
-        } else if (isAvailable && !isUnavailable) {
-          // Available → Unavailable
-          setMyAvail(prev => {
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-          });
-          setMyUnavail(prev => new Set(prev).add(key));
-        } else {
-          // Unavailable → Normal
-          setMyUnavail(prev => {
+        // Unavailable → Normal
+        setMyUnavail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        // If this was a proxy takeover, remove from tracking when going back to normal
+        if (isProxyTakeover) {
+          setProxyTakeoverSlots(prev => {
             const next = new Set(prev);
             next.delete(key);
             return next;
@@ -920,13 +898,13 @@ export default function TennisLadderScheduler() {
           })
         ];
 
-        // Save proxy takeover slots through proxy API to update setByUserId
+        // Save proxy takeover slots through takeover API to update setByUserId only for modified slots
         if (takeoverAvailSlots.size > 0 || takeoverUnavailSlots.size > 0) {
           const myTeam = teamsData.teams.find(t => t.id === teamsData.myTeamId);
           const myUserId = teamsData.currentUserId;
           if (myTeam && myUserId) {
             promises.push(
-              fetch('/api/availability/proxy', {
+              fetch('/api/availability/takeover', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
