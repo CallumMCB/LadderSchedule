@@ -591,12 +591,12 @@ export default function ScoringPage() {
 
                           return (
                             <td key={colTeam.id} className="p-2">
-                              <div className="space-y-1">
+                              <div className="flex justify-center">
                                 {/* Compact scoring table */}
-                                <table className="text-xs border-separate border-spacing-0">
+                                <table className="text-xs border-collapse">
                                   <thead>
                                     <tr>
-                                      <th className="w-3"></th>
+                                      <th className="w-4"></th>
                                       {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
                                         <th key={setIndex} className="text-center text-xs font-medium text-gray-600 px-1">
                                           S{setIndex + 1}
@@ -607,14 +607,14 @@ export default function ScoringPage() {
                                   <tbody>
                                     {/* Row team games */}
                                     <tr>
-                                      <td className="pr-1">
+                                      <td className="pr-2 text-center">
                                         <div 
-                                          className="w-2 h-2 rounded-full"
+                                          className="w-2 h-2 rounded-full mx-auto"
                                           style={{ backgroundColor: rowTeam.color }}
                                         />
                                       </td>
                                       {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                        <td key={setIndex} className="px-0.5">
+                                        <td key={setIndex}>
                                           <Input
                                             type="text"
                                             value={getSetScore(rowTeamScore, setIndex)}
@@ -624,7 +624,7 @@ export default function ScoringPage() {
                                               setIndex,
                                               e.target.value
                                             )}
-                                            className="w-7 h-5 text-center text-xs p-0 border"
+                                            className="w-9 h-5 text-center text-xs border"
                                             placeholder="0"
                                           />
                                         </td>
@@ -633,14 +633,14 @@ export default function ScoringPage() {
                                     
                                     {/* Column team games */}
                                     <tr>
-                                      <td className="pr-1">
+                                      <td className="pr-2 text-center">
                                         <div 
-                                          className="w-2 h-2 rounded-full"
+                                          className="w-2 h-2 rounded-full mx-auto"
                                           style={{ backgroundColor: colTeam.color }}
                                         />
                                       </td>
                                       {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                        <td key={setIndex} className="px-0.5">
+                                        <td key={setIndex}>
                                           <Input
                                             type="text"
                                             value={getSetScore(colTeamScore, setIndex)}
@@ -650,7 +650,7 @@ export default function ScoringPage() {
                                               setIndex,
                                               e.target.value
                                             )}
-                                            className="w-7 h-5 text-center text-xs p-0 border"
+                                            className="w-9 h-5 text-center text-xs border"
                                             placeholder="0"
                                           />
                                         </td>
