@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const { weekStartISO, availableSlots, unavailableSlots, targetUserId } = await req.json();
+    const { weekStartISO, availableSlots, unavailableSlots, noneSlots, targetUserId } = await req.json();
     
     if (!weekStartISO || !targetUserId) {
       return NextResponse.json({ error: "weekStartISO and targetUserId required" }, { status: 400 });
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     const weekStart = mondayStart(weekStartISO);
     const availableSlotDates = (availableSlots || []).map((s: string) => new Date(s));
     const unavailableSlotDates = (unavailableSlots || []).map((s: string) => new Date(s));
+    const noneSlotDates = (noneSlots || []).map((s: string) => new Date(s));
 
     // Get current user
     const currentUser = await prisma.user.findUnique({ 
@@ -54,23 +55,48 @@ export async function POST(req: NextRequest) {
             }
           },
           update: {
-            setByUserId: currentUser.id // Take ownership
+            availability: "available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id // Only set if different user
           },
           create: {
             userId: targetUserId,
             startAt: slotDate,
             weekStart: weekStart,
-            setByUserId: currentUser.id
+            availability: "available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id
           }
         });
       }
 
-      // Handle unavailable slot takeovers by deleting the availability
-      if (unavailableSlotDates.length > 0) {
+      // Handle unavailable slot takeovers
+      for (const slotDate of unavailableSlotDates) {
+        await tx.availability.upsert({
+          where: {
+            userId_startAt: {
+              userId: targetUserId,
+              startAt: slotDate
+            }
+          },
+          update: {
+            availability: "not_available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id
+          },
+          create: {
+            userId: targetUserId,
+            startAt: slotDate,
+            weekStart: weekStart,
+            availability: "not_available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id
+          }
+        });
+      }
+
+      // Handle none slot takeovers by deleting the availability entries
+      if (noneSlotDates.length > 0) {
         await tx.availability.deleteMany({
           where: {
             userId: targetUserId,
-            startAt: { in: unavailableSlotDates },
+            startAt: { in: noneSlotDates },
             weekStart: weekStart
           }
         });
@@ -79,9 +105,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Took ownership of ${availableSlotDates.length + unavailableSlotDates.length} slots for ${targetUser.name || targetUser.email}`,
+      message: `Updated ${availableSlotDates.length + unavailableSlotDates.length + noneSlotDates.length} slots for ${targetUser.name || targetUser.email}`,
       availableSlotsCount: availableSlotDates.length,
-      unavailableSlotsCount: unavailableSlotDates.length
+      unavailableSlotsCount: unavailableSlotDates.length,
+      noneSlotsCount: noneSlotDates.length
     });
 
   } catch (error) {

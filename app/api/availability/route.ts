@@ -26,21 +26,25 @@ const me = await prisma.user.findUnique({ where: { email: session.user.email } }
 if (!me) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
 const [mySlots, partner] = await Promise.all([
-prisma.availability.findMany({ where: { userId: me.id, weekStart }, select: { startAt: true, setByUserId: true } }),
+prisma.availability.findMany({ where: { userId: me.id, weekStart }, select: { startAt: true, availability: true, setByUserId: true } }),
 me.partnerId ? prisma.user.findUnique({ where: { id: me.partnerId } }) : Promise.resolve(null),
 ]);
 
-let partnerSlots: Array<{ startAt: Date; setByUserId: string | null }> = [];
+let partnerSlots: Array<{ startAt: Date; availability: string; setByUserId: string | null }> = [];
 if (partner) {
-const rows = await prisma.availability.findMany({ where: { userId: partner.id, weekStart }, select: { startAt: true, setByUserId: true } });
+const rows = await prisma.availability.findMany({ where: { userId: partner.id, weekStart }, select: { startAt: true, availability: true, setByUserId: true } });
 partnerSlots = rows;
 }
 
 return NextResponse.json({
-mySlots: mySlots.map(r => r.startAt.toISOString()),
-partnerSlots: partnerSlots.map(d => d.startAt.toISOString()),
+mySlots: mySlots.filter(r => r.availability === "available").map(r => r.startAt.toISOString()),
+partnerSlots: partnerSlots.filter(d => d.availability === "available").map(d => d.startAt.toISOString()),
+myUnavailableSlots: mySlots.filter(r => r.availability === "not_available").map(r => r.startAt.toISOString()),
+partnerUnavailableSlots: partnerSlots.filter(d => d.availability === "not_available").map(d => d.startAt.toISOString()),
 mySlotsSetBy: mySlots.map(r => r.setByUserId),
 partnerSlotsSetBy: partnerSlots.map(d => d.setByUserId),
+myAvailabilityStates: mySlots.map(r => r.availability),
+partnerAvailabilityStates: partnerSlots.map(d => d.availability),
 partnerEmail: partner?.email ?? null,
 });
 }
@@ -60,17 +64,20 @@ if (!me) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
 // Replace my availability for this week atomically
 await prisma.$transaction(async (tx) => {
-// Delete all availability I set for myself this week
+// Delete all availability I set for myself this week (where setByUserId is null or me.id)
 await tx.availability.deleteMany({ 
 where: { 
 userId: me.id, 
 weekStart,
-setByUserId: me.id // Only delete my own settings, not proxy settings
+OR: [
+  { setByUserId: null }, // My own slots
+  { setByUserId: me.id }  // Legacy format where I set my own
+]
 } 
 });
 if (slots.length) {
 await tx.availability.createMany({
-data: slots.map((startAt) => ({ userId: me.id, startAt, weekStart, setByUserId: me.id })),
+data: slots.map((startAt) => ({ userId: me.id, startAt, weekStart, availability: "available", setByUserId: null })), // Don't set setByUserId for own slots
 });
 }
 });

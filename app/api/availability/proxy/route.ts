@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   try {
     const { weekStartISO, availableSlots, unavailableSlots, slots, targetUserId } = await req.json();
     
-    // Support both old format (slots) and new format (availableSlots/unavailableSlots)
+    // Support both old format (slots) and new format (availableSlots/unavailableSlots)  
     const available = availableSlots || slots || [];
     const unavailable = unavailableSlots || [];
     
@@ -59,14 +59,18 @@ export async function POST(req: NextRequest) {
         .filter(slot => slot.setByUserId === targetUserId)
         .map(slot => slot.startAt.toISOString());
 
-      // Delete only proxy-set slots, preserve user's own slots
-      await tx.availability.deleteMany({ 
-        where: { 
-          userId: targetUserId, 
-          weekStart,
-          setByUserId: { not: targetUserId } // Only delete non-user-set slots
-        } 
-      });
+      // Delete only the specific proxy-set slots we're updating, preserve user's own slots and other proxy slots
+      const allSlotDates = [...availableSlotDates, ...unavailableSlotDates];
+      if (allSlotDates.length > 0) {
+        await tx.availability.deleteMany({ 
+          where: { 
+            userId: targetUserId, 
+            weekStart,
+            startAt: { in: allSlotDates },
+            setByUserId: { not: targetUserId } // Only delete non-user-set slots for these specific times
+          } 
+        });
+      }
 
       // Add new available slots (excluding any that the user has set themselves)
       const newAvailableSlots = availableSlotDates.filter((date: Date) => 
@@ -79,24 +83,36 @@ export async function POST(req: NextRequest) {
             userId: targetUserId, 
             startAt, 
             weekStart,
-            setByUserId: currentUser.id // Track who set this
+            availability: "available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id // Only set if different user
           })),
         });
       }
 
-      // Handle unavailable slots: delete any proxy-set availability for these slots
-      // (but preserve user's own slots even if they're marked unavailable by proxy)
-      const unavailableSlotsToDelete = unavailableSlotDates.filter((date: Date) => 
+      // Handle unavailable slots: create entries with availability="not_available"
+      const newUnavailableSlots = unavailableSlotDates.filter((date: Date) => 
         !userOwnSlots.includes(date.toISOString())
       );
 
-      if (unavailableSlotsToDelete.length) {
+      if (newUnavailableSlots.length) {
+        // First delete existing proxy-set slots for these times
         await tx.availability.deleteMany({
           where: {
             userId: targetUserId,
-            startAt: { in: unavailableSlotsToDelete },
+            startAt: { in: newUnavailableSlots },
             setByUserId: { not: targetUserId } // Only delete proxy-set slots
           }
+        });
+        
+        // Then create new unavailable entries
+        await tx.availability.createMany({
+          data: newUnavailableSlots.map((startAt: Date) => ({ 
+            userId: targetUserId, 
+            startAt, 
+            weekStart,
+            availability: "not_available",
+            setByUserId: targetUserId === currentUser.id ? null : currentUser.id // Only set if different user
+          })),
         });
       }
     });
