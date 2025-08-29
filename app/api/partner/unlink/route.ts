@@ -36,9 +36,15 @@ export async function POST() {
           data: { partnerId: null }
         });
       } else if (user.partneredBy) {
-        // This user is partnered by someone else
+        // This user is partnered by someone else - update both
         await tx.user.update({
           where: { id: user.partneredBy.id },
+          data: { partnerId: null }
+        });
+        
+        // Also clear this user's partnerId if it exists
+        await tx.user.update({
+          where: { id: user.id },
           data: { partnerId: null }
         });
       }

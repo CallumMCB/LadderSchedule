@@ -568,25 +568,36 @@ export default function TennisLadderScheduler() {
         effectiveAvailable 
       });
       
-      // Three-state cycle starting from effective current state
-      if (effectiveAvailable) {
-        // Available → Unavailable
+      // Three-state cycle: available → not_available → none → available
+      // Need to consider both proxy state AND existing database state
+      if (effectiveAvailable && !hasProxyUnavailable) {
+        // Currently Available (either from DB or proxy) → Not Available  
         setProxyAvail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
         setProxyUnavail(prev => new Set(prev).add(key));
-      } else if (hasProxyUnavailable) {
-        // Unavailable → Normal (remove all proxy modifications)
+      } else if (hasProxyUnavailable || (!effectiveAvailable && (hasProxyAvailable || currentActualAvailable))) {
+        // Currently Not Available (from proxy unavailable OR was available before) → None
         setProxyUnavail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
+        setProxyAvail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
       } else {
-        // Normal → Available
+        // None (no proxy modifications and no existing state) → Available
         setProxyAvail(prev => new Set(prev).add(key));
+        setProxyUnavail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
       }
     } else {
       // Normal behavior for my own team
