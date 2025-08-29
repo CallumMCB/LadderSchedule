@@ -76,6 +76,30 @@ export default function TennisLadderScheduler() {
     }>;
   }>({ teams: [] });
   
+  // Store all matches and availabilities
+  const [allMatches, setAllMatches] = useState<Array<{
+    id: string;
+    startAt: string;
+    team1Id: string;
+    team2Id: string;
+    team1Score?: number;
+    team2Score?: number;
+    completed?: boolean;
+  }>>([]);
+  
+  const [allAvailabilities, setAllAvailabilities] = useState<Map<string, {
+    teams: Array<{
+      id: string;
+      member1: { id: string; email: string; name?: string; availability: string[]; setByUserIds: string[] };
+      member2?: { id: string; email: string; name?: string; availability: string[]; setByUserIds: string[] };
+      color: string;
+      isComplete?: boolean;
+      lookingForPartner?: boolean;
+    }>;
+    myTeamId?: string;
+    currentUserId?: string;
+  }>>(new Map());
+  
   const [ladderInfo, setLadderInfo] = useState<{
     currentLadder?: { id: string; name: string; number: number; endDate: string };
     allLadders: Array<{ id: string; name: string; number: number; endDate: string }>;
@@ -130,9 +154,89 @@ export default function TennisLadderScheduler() {
 
   useEffect(() => {
     if (session && ladderInfo?.currentLadder) {
-      loadAllMembersAvailability();
+      loadAllData();
     }
-  }, [session, weekStart, ladderInfo?.currentLadder?.id]);
+  }, [session, ladderInfo?.currentLadder?.id]);
+  
+  // Function to load availability for a specific week
+  const loadWeekAvailability = React.useCallback(async (weekStartISO: string) => {
+    try {
+      const ladderId = ladderInfo?.currentLadder?.id;
+      const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
+      const response = await fetch(url);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update the availability map
+        setAllAvailabilities(prev => {
+          const newMap = new Map(prev);
+          newMap.set(weekStartISO, {
+            teams: data.teams,
+            myTeamId: data.myTeamId,
+            currentUserId: data.currentUserId
+          });
+          return newMap;
+        });
+        
+        // Filter matches for current week  
+        const weekStartUTC = new Date(weekStartISO);
+        const weekEndTime = new Date(weekStartUTC.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const currentWeekMatches = allMatches.filter(match => {
+          const matchTime = new Date(match.startAt);
+          return matchTime >= weekStartUTC && matchTime < weekEndTime;
+        });
+        
+        setTeamsData({
+          teams: data.teams,
+          myTeamId: data.myTeamId,
+          currentUserId: data.currentUserId,
+          matches: currentWeekMatches
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to load availability for week ${weekStartISO}:`, error);
+    }
+  }, [ladderInfo, allMatches]);
+  
+  // Function to update current week data
+  const updateCurrentWeekData = React.useCallback(() => {
+    const weekStartUTC = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+    const weekStartISO = weekStartUTC.toISOString();
+    
+    // Get availability data for current week
+    const weekData = allAvailabilities.get(weekStartISO);
+    
+    // Filter matches for current week
+    const weekEndTime = new Date(weekStartUTC.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const currentWeekMatches = allMatches.filter(match => {
+      const matchTime = new Date(match.startAt);
+      return matchTime >= weekStartUTC && matchTime < weekEndTime;
+    });
+    
+    console.log('Updating current week data for:', weekStartISO);
+    console.log('Week matches:', currentWeekMatches.length);
+    console.log('Week availability loaded:', !!weekData);
+    
+    if (weekData) {
+      setTeamsData({
+        teams: weekData.teams,
+        myTeamId: weekData.myTeamId,
+        currentUserId: weekData.currentUserId,
+        matches: currentWeekMatches
+      });
+    } else {
+      // If we don't have availability data for this week, load it
+      loadWeekAvailability(weekStartISO).catch(console.error);
+    }
+  }, [weekStart, allAvailabilities, allMatches, ladderInfo, loadWeekAvailability]);
+
+  // When week changes, update teamsData with the current week's data
+  useEffect(() => {
+    if (allAvailabilities.size > 0 || allMatches.length > 0) {
+      updateCurrentWeekData();
+    }
+  }, [updateCurrentWeekData, allAvailabilities, allMatches]);
 
   // Global mouse up handler for drag selection
 
@@ -625,8 +729,8 @@ export default function TennisLadderScheduler() {
           // Clear proxy state after successful save
           setProxyAvail(new Set());
           setProxyUnavail(new Set());
-          // Only reload teams data, not my own availability to preserve unsaved changes
-          await loadTeamsAvailability();
+          // Reload all data to get updated matches and availability
+          await loadAllData();
           setTimeout(() => setSaveMsg(""), 2000);
         } else {
           const error = await response.json();
@@ -687,8 +791,8 @@ export default function TennisLadderScheduler() {
             // Clear current proxy state after successful save
             setProxyAvail(new Set());
             setProxyUnavail(new Set());
-            // Only reload teams data, not my own availability to preserve unsaved changes
-            await loadTeamsAvailability();
+            // Reload all data to get updated matches and availability
+            await loadAllData();
             setTimeout(() => setSaveMsg(""), 2000);
           } else {
             setSaveMsg("Some saves failed");
@@ -750,34 +854,64 @@ export default function TennisLadderScheduler() {
     }
   }
 
-  async function loadTeamsAvailability() {
+  async function loadAllData() {
     try {
-      // Load all teams' availability for the user's current ladder
       const ladderId = ladderInfo?.currentLadder?.id;
-      console.log('Calendar weekStart state:', weekStart);
-      console.log('Current date:', new Date());
-      console.log('Expected week start (Monday):', startOfWeekMonday(new Date()));
-      // Fix timezone issue by creating a proper Monday date in UTC
-      const weekStartUTC = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
-      const weekStartISO = weekStartUTC.toISOString();
-      console.log('Original weekStart:', weekStart);
-      console.log('UTC weekStart:', weekStartUTC);  
-      console.log('Sending weekStart ISO:', weekStartISO);
-      const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
-      const teamsResponse = await fetch(url);
-      if (teamsResponse.ok) {
-        const teamsData = await teamsResponse.json();
-        console.log('Loaded teams data:', teamsData);
-        console.log('Matches found:', teamsData.matches);
-        console.log('Teams availability example:', teamsData.teams.slice(0, 2).map((t: any) => ({
-          id: t.id,
-          member1: { email: t.member1.email, availability: t.member1.availability.slice(0, 3), setByUserIds: t.member1.setByUserIds.slice(0, 3) },
-          member2: t.member2 ? { email: t.member2.email, availability: t.member2.availability.slice(0, 3), setByUserIds: t.member2.setByUserIds.slice(0, 3) } : null
-        })));
-        setTeamsData(teamsData);
+      
+      // Load all matches for the current ladder
+      const matchesResponse = await fetch(`/api/matches/all${ladderId ? `?ladderId=${ladderId}` : ''}`);
+      if (matchesResponse.ok) {
+        const matchesData = await matchesResponse.json();
+        console.log('Loaded all matches:', matchesData.matches.length);
+        setAllMatches(matchesData.matches);
       }
+      
+      // Load availability data for multiple weeks (current week and surrounding weeks)
+      const weeks: Date[] = [];
+      const currentWeek = startOfWeekMonday(new Date());
+      
+      // Load 8 weeks total (4 weeks back, current week, 3 weeks forward)
+      for (let i = -4; i <= 3; i++) {
+        const weekDate = new Date(currentWeek);
+        weekDate.setDate(weekDate.getDate() + (i * 7));
+        weeks.push(weekDate);
+      }
+      
+      const availabilityPromises = weeks.map(async (week) => {
+        const weekStartUTC = new Date(week.getFullYear(), week.getMonth(), week.getDate());
+        const weekStartISO = weekStartUTC.toISOString();
+        const url = `/api/teams/availability?weekStart=${weekStartISO}${ladderId ? `&ladderId=${ladderId}` : ''}`;
+        
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            return { week: weekStartISO, data };
+          }
+        } catch (error) {
+          console.error(`Failed to load availability for week ${weekStartISO}:`, error);
+        }
+        return null;
+      });
+      
+      const availabilityResults = await Promise.all(availabilityPromises);
+      const availabilityMap = new Map();
+      
+      availabilityResults.forEach(result => {
+        if (result) {
+          availabilityMap.set(result.week, {
+            teams: result.data.teams,
+            myTeamId: result.data.myTeamId,
+            currentUserId: result.data.currentUserId
+          });
+        }
+      });
+      
+      console.log('Loaded availability for', availabilityMap.size, 'weeks');
+      setAllAvailabilities(availabilityMap);
+      
     } catch (error) {
-      console.error("Failed to load teams availability:", error);
+      console.error("Failed to load all data:", error);
     }
   }
 
@@ -808,8 +942,8 @@ export default function TennisLadderScheduler() {
         }
       }
 
-      // Load teams data too
-      await loadTeamsAvailability();
+      // Reload all data to get updated matches and availability
+      await loadAllData();
     } catch (error) {
       console.error("Failed to load availability:", error);
     }
@@ -1310,9 +1444,16 @@ export default function TennisLadderScheduler() {
         console.log('Match confirmation response:', data);
         setSaveMsg("Match confirmed successfully!");
         setShowMatchConfirmation(null);
-        // Reload data to show the confirmed match
+        // Reload all matches to show the confirmed match
         console.log('Reloading data after match confirmation...');
-        await loadAllMembersAvailability();
+        const ladderId = ladderInfo?.currentLadder?.id;
+        const matchesResponse = await fetch(`/api/matches/all${ladderId ? `?ladderId=${ladderId}` : ''}`);
+        if (matchesResponse.ok) {
+          const matchesData = await matchesResponse.json();
+          setAllMatches(matchesData.matches);
+          // Update current week data with new matches
+          updateCurrentWeekData();
+        }
         setTimeout(() => setSaveMsg(""), 3000);
       } else {
         const error = await response.json();
@@ -1336,8 +1477,15 @@ export default function TennisLadderScheduler() {
       if (response.ok) {
         await response.json();
         setSaveMsg("Match cancelled successfully!");
-        // Reload data to remove the cancelled match
-        await loadAllMembersAvailability();
+        // Reload all matches to remove the cancelled match
+        const ladderId = ladderInfo?.currentLadder?.id;
+        const matchesResponse = await fetch(`/api/matches/all${ladderId ? `?ladderId=${ladderId}` : ''}`);
+        if (matchesResponse.ok) {
+          const matchesData = await matchesResponse.json();
+          setAllMatches(matchesData.matches);
+          // Update current week data with updated matches
+          updateCurrentWeekData();
+        }
         setTimeout(() => setSaveMsg(""), 3000);
       } else {
         const error = await response.json();
