@@ -2296,8 +2296,8 @@ function AvailabilityGrid({
                 const member1ProxyAvail = proxyAvail.has(slotKey);
                 const member1ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                member1Available = member1ExistingAvail || member1ProxyAvail;
-                member1Unavailable = member1ProxyUnavail && !member1ExistingAvail; // Only show unavailable if not already available
+                member1Available = (member1ExistingAvail || member1ProxyAvail) && !member1ProxyUnavail;
+                member1Unavailable = member1ProxyUnavail;
                 member2Available = team.member2?.availability.includes(slotKey) || false;
               } else if (actingAsPlayer === team.member2?.id) {
                 // Acting as member 2 only - show existing OR proxy state
@@ -2306,8 +2306,8 @@ function AvailabilityGrid({
                 const member2ProxyAvail = proxyAvail.has(slotKey);
                 const member2ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                member2Available = member2ExistingAvail || member2ProxyAvail;
-                member2Unavailable = member2ProxyUnavail && !member2ExistingAvail; // Only show unavailable if not already available
+                member2Available = (member2ExistingAvail || member2ProxyAvail) && !member2ProxyUnavail;
+                member2Unavailable = member2ProxyUnavail;
               } else {
                 // Acting for both members - show existing OR proxy state for each
                 const member1ExistingAvail = team.member1.availability.includes(slotKey);
@@ -2315,10 +2315,10 @@ function AvailabilityGrid({
                 const proxyAvailForSlot = proxyAvail.has(slotKey);
                 const proxyUnavailForSlot = proxyUnavail.has(slotKey);
                 
-                member1Available = member1ExistingAvail || proxyAvailForSlot;
-                member1Unavailable = proxyUnavailForSlot && !member1ExistingAvail;
-                member2Available = member2ExistingAvail || proxyAvailForSlot;
-                member2Unavailable = proxyUnavailForSlot && !member2ExistingAvail;
+                member1Available = (member1ExistingAvail || proxyAvailForSlot) && !proxyUnavailForSlot;
+                member1Unavailable = proxyUnavailForSlot;
+                member2Available = (member2ExistingAvail || proxyAvailForSlot) && !proxyUnavailForSlot;
+                member2Unavailable = proxyUnavailForSlot;
               }
             } else {
               member1Available = team.member1.availability.includes(slotKey);
