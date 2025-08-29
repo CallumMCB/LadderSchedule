@@ -2302,23 +2302,14 @@ function AvailabilityGrid({
                     }}
                   >
                     {/* Show proxy stripes if my availability was set by someone else */}
-                    {iAvailable && mySetByProxy && (() => {
-                      // Get the team color of whoever set this proxy from team data
-                      const setByUserId = myAvailIndex >= 0 ? myTeamObj.member1.setByUserIds[myAvailIndex] : null;
-                      const setByTeam = setByUserId ? teamsData.teams.find(t => 
-                        t.member1.id === setByUserId || t.member2?.id === setByUserId
-                      ) : null;
-                      const stripeColor = setByTeam?.color || '#000000';
-                      
-                      return (
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 1px, ${stripeColor}40 1px, ${stripeColor}40 2px)`
-                          }}
-                        />
-                      );
-                    })()}
+                    {iAvailable && mySetByProxy && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px)'
+                        }}
+                      />
+                    )}
                   </div>
                   {/* Bottom half - Partner */}
                   <div 
@@ -2330,23 +2321,14 @@ function AvailabilityGrid({
                     }}
                   >
                     {/* Show proxy stripes if partner's availability was set by someone else */}
-                    {partnerAvailable && partnerSetByProxy && (() => {
-                      // Get the team color of whoever set this proxy from team data
-                      const setByUserId = partnerAvailIndex >= 0 && myTeamObj.member2 ? myTeamObj.member2.setByUserIds[partnerAvailIndex] : null;
-                      const setByTeam = setByUserId ? teamsData.teams.find(t => 
-                        t.member1.id === setByUserId || t.member2?.id === setByUserId
-                      ) : null;
-                      const stripeColor = setByTeam?.color || '#000000';
-                      
-                      return (
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 1px, ${stripeColor}40 1px, ${stripeColor}40 2px)`
-                          }}
-                        />
-                      );
-                    })()}
+                    {partnerAvailable && partnerSetByProxy && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px)'
+                        }}
+                      />
+                    )}
                   </div>
                   {/* Solid overlay when both available */}
                   {bothAvailable && (
@@ -2355,29 +2337,14 @@ function AvailabilityGrid({
                       style={{ backgroundColor: myTeamColor }}
                     >
                       {/* Show proxy stripes on solid overlay if either was set by proxy */}
-                      {(mySetByProxy || partnerSetByProxy) && (() => {
-                        // Get the team color of whoever set this proxy from team data
-                        let setByUserId = null;
-                        if (mySetByProxy && myAvailIndex >= 0) {
-                          setByUserId = myTeamObj.member1.setByUserIds[myAvailIndex];
-                        } else if (partnerSetByProxy && partnerAvailIndex >= 0 && myTeamObj.member2) {
-                          setByUserId = myTeamObj.member2.setByUserIds[partnerAvailIndex];
-                        }
-                        
-                        const setByTeam = setByUserId ? teamsData.teams.find(t => 
-                          t.member1.id === setByUserId || t.member2?.id === setByUserId
-                        ) : null;
-                        const stripeColor = setByTeam?.color || '#000000';
-                        
-                        return (
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 1px, ${stripeColor}60 1px, ${stripeColor}60 2px)`
-                            }}
-                          />
-                        );
-                      })()}
+                      {(mySetByProxy || partnerSetByProxy) && (
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px)'
+                          }}
+                        />
+                      )}
                     </div>
                   )}
                 </>
