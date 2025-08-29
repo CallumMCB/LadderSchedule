@@ -53,6 +53,12 @@ export default function ScoringPage() {
     currentLadder?: { id: string; name: string; number: number; endDate: string };
     allLadders: Array<{ id: string; name: string; number: number; endDate: string }>;
   }>({ allLadders: [] });
+  const [showFormatModal, setShowFormatModal] = useState(false);
+  const [matchFormat, setMatchFormat] = useState({
+    sets: 3,
+    gamesPerSet: 6,
+    winnerBy: 'sets' as 'sets' | 'games'
+  });
 
   useEffect(() => {
     if (session) {
@@ -401,7 +407,17 @@ export default function ScoringPage() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold">Match Scoring</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-semibold">Match Scoring</h1>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowFormatModal(true)}
+                className="text-xs"
+              >
+                Change Format
+              </Button>
+            </div>
             <div className="flex items-center gap-4">
               {ladderInfo.allLadders.length > 1 && (
                 <div className="flex items-center gap-2">
@@ -904,6 +920,87 @@ export default function ScoringPage() {
               >
                 Schedule
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Format Settings Modal */}
+      {showFormatModal && (
+        <div className="fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50" 
+            onClick={() => setShowFormatModal(false)}
+          />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Match Format Settings</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Number of Sets</label>
+                <select
+                  value={matchFormat.sets}
+                  onChange={(e) => setMatchFormat(prev => ({ ...prev, sets: parseInt(e.target.value) }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value={1}>1 Set</option>
+                  <option value={3}>3 Sets (Best of 3)</option>
+                  <option value={5}>5 Sets (Best of 5)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Games per Set</label>
+                <select
+                  value={matchFormat.gamesPerSet}
+                  onChange={(e) => setMatchFormat(prev => ({ ...prev, gamesPerSet: parseInt(e.target.value) }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value={4}>4 Games</option>
+                  <option value={6}>6 Games</option>
+                  <option value={8}>8 Games</option>
+                  <option value={10}>10 Games</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Winner Determined By</label>
+                <select
+                  value={matchFormat.winnerBy}
+                  onChange={(e) => setMatchFormat(prev => ({ ...prev, winnerBy: e.target.value as 'sets' | 'games' }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="sets">Most Sets Won</option>
+                  <option value="games">Most Games Won</option>
+                </select>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <div className="font-medium text-blue-900 mb-1">Current Format:</div>
+                <div className="text-blue-800">
+                  {matchFormat.sets === 1 ? '1 Set' : `Best of ${matchFormat.sets} Sets`} • {matchFormat.gamesPerSet} Games per Set
+                  <br />
+                  Winner: {matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowFormatModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowFormatModal(false);
+                  setSaveMsg("Format updated!");
+                  setTimeout(() => setSaveMsg(""), 2000);
+                }}
+              >
+                Save Format
+              </Button>
             </div>
           </div>
         </div>

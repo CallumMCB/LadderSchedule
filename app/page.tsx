@@ -2281,8 +2281,12 @@ function AvailabilityGrid({
                 const proxyAvailForSlot = proxyAvail.has(slotKey);
                 const proxyUnavailForSlot = proxyUnavail.has(slotKey);
                 
-                // If proxy state exists, use it completely; otherwise use existing
-                if (proxyAvailForSlot || proxyUnavailForSlot) {
+                // Check if we have any changes for this team (current or saved)
+                const teamHasChanges = (proxyAvailForSlot || proxyUnavailForSlot) || 
+                  (teamProxyStates[team.id] && (teamProxyStates[team.id].avail.size > 0 || teamProxyStates[team.id].unavail.size > 0));
+                  
+                if (teamHasChanges || actingAsTeam === team.id) {
+                  // Use proxy state completely when we're acting on this team or have changes
                   member1Available = proxyAvailForSlot;
                   member1Unavailable = proxyUnavailForSlot;
                   member2Available = proxyAvailForSlot;

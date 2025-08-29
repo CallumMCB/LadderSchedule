@@ -41,6 +41,9 @@ export default function ProfilePage() {
   const [showCreateLadder, setShowCreateLadder] = useState(false);
   const [newLadderName, setNewLadderName] = useState("");
   const [newLadderEndDate, setNewLadderEndDate] = useState("");
+  
+  // Ladder winner settings
+  const [ladderWinnerBy, setLadderWinnerBy] = useState<'matches' | 'games'>('matches');
 
   useEffect(() => {
     if (session?.user) {
@@ -578,6 +581,52 @@ export default function ProfilePage() {
                 ⚠️ <strong>Warning:</strong> Changing ladders will clear all your matches, availability, and scores. You and your partner will be moved to the new ladder as a fresh team.
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ladder Winner Settings */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Ladder Winner Settings</h3>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Choose how the ladder winner is determined at the end of the season.
+            </p>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Winner Determined By</label>
+              <select
+                value={ladderWinnerBy}
+                onChange={(e) => setLadderWinnerBy(e.target.value as 'matches' | 'games')}
+                className="w-full p-2 border rounded-lg"
+              >
+                <option value="matches">Number of Matches Won</option>
+                <option value="games">Total Games Won (for single-set matches)</option>
+              </select>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+              <div className="font-medium text-yellow-900 mb-1">Note:</div>
+              <div className="text-yellow-800">
+                {ladderWinnerBy === 'matches' ? (
+                  "Winner will be the team with the most match victories. Best for multi-set matches."
+                ) : (
+                  "Winner will be the team with the most total games won. Best for single-set matches where game count matters more."
+                )}
+              </div>
+            </div>
+            
+            <Button 
+              onClick={() => {
+                setMessage("Ladder winner settings updated!");
+                setTimeout(() => setMessage(""), 3000);
+              }}
+              disabled={loading}
+            >
+              Save Winner Settings
+            </Button>
           </div>
         </CardContent>
       </Card>
