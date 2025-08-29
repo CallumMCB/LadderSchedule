@@ -134,6 +134,10 @@ export default function TennisLadderScheduler() {
   const [isBlockSelectMode, setIsBlockSelectMode] = useState(false);
   const [blockSelectCorners, setBlockSelectCorners] = useState<string[]>([]);
   
+  // Time range display state
+  const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
+  const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
+  
   // Undo state
   const [undoStack, setUndoStack] = useState<Array<{
     myAvail: Set<string>;
@@ -1181,6 +1185,25 @@ export default function TennisLadderScheduler() {
             </div>
           )}
         </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-600">Show times:</span>
+          <Button
+            variant={showEarlyTimes ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowEarlyTimes(!showEarlyTimes)}
+            className="text-xs"
+          >
+            {showEarlyTimes ? "Hide" : "Show"} early (6am-9:30am)
+          </Button>
+          <Button
+            variant={showLateTimes ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowLateTimes(!showLateTimes)}
+            className="text-xs"
+          >
+            {showLateTimes ? "Hide" : "Show"} late (9pm-9:30pm)
+          </Button>
+        </div>
       </div>
 
       <AvailabilityGrid 
@@ -1202,6 +1225,8 @@ export default function TennisLadderScheduler() {
         isBlockSelectMode={isBlockSelectMode}
         onBlockSelectClick={handleBlockSelectClick}
         ladderInfo={ladderInfo}
+        showEarlyTimes={showEarlyTimes}
+        showLateTimes={showLateTimes}
       />
 
       <details>
@@ -1624,7 +1649,9 @@ function AvailabilityGrid({
   blockSelectCorners,
   isBlockSelectMode,
   onBlockSelectClick,
-  ladderInfo
+  ladderInfo,
+  showEarlyTimes,
+  showLateTimes
 }: { 
   days: Date[]; 
   myAvail: Set<string>; 
@@ -1667,6 +1694,8 @@ function AvailabilityGrid({
     currentLadder?: { id: string; name: string; number: number; endDate: string };
     allLadders: Array<{ id: string; name: string; number: number; endDate: string }>;
   };
+  showEarlyTimes: boolean;
+  showLateTimes: boolean;
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
@@ -2149,24 +2178,63 @@ function AvailabilityGrid({
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: (22 - 6) * 2 }, (_, r) => {
-            const hour = 6 + Math.floor(r / 2);
-            const minute = r % 2 === 0 ? 0 : 30;
-            const rowLabel = timeLabel(hour, minute);
-            return (
-              <tr key={r} className="odd:bg-muted/20">
-                <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel}</td>
-                {days.map((d, c) => {
-                  const key = isoAt(d, hour, minute);
-                  return (
-                    <td key={c} className="p-0 align-top w-32">
-                      <TimeSlotVisual slotKey={key} rowLabel={rowLabel} />
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+          {(() => {
+            // Define time ranges
+            const earlyHours = [6, 7, 8, 9]; // 6am-9:30am (4 hours = 8 slots)
+            const normalHours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 10am-8:30pm (11 hours = 22 slots)  
+            const lateHours = [21]; // 9pm-9:30pm (1 hour = 2 slots)
+            
+            // Determine which hours to show
+            let hoursToShow = [...normalHours];
+            if (showEarlyTimes) {
+              hoursToShow = [...earlyHours, ...hoursToShow];
+            }
+            if (showLateTimes) {
+              hoursToShow = [...hoursToShow, ...lateHours];
+            }
+            
+            // Generate rows for each half-hour slot
+            const rows: JSX.Element[] = [];
+            hoursToShow.forEach((hour, hourIndex) => {
+              // Add 00 minute slot
+              const minute0 = 0;
+              const rowLabel0 = timeLabel(hour, minute0);
+              const r0 = hourIndex * 2;
+              rows.push(
+                <tr key={`${hour}-00`} className="odd:bg-muted/20">
+                  <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel0}</td>
+                  {days.map((d, c) => {
+                    const key = isoAt(d, hour, minute0);
+                    return (
+                      <td key={c} className="p-0 align-top w-32">
+                        <TimeSlotVisual slotKey={key} rowLabel={rowLabel0} />
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+              
+              // Add 30 minute slot
+              const minute30 = 30;
+              const rowLabel30 = timeLabel(hour, minute30);
+              const r30 = hourIndex * 2 + 1;
+              rows.push(
+                <tr key={`${hour}-30`} className="odd:bg-muted/20">
+                  <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel30}</td>
+                  {days.map((d, c) => {
+                    const key = isoAt(d, hour, minute30);
+                    return (
+                      <td key={c} className="p-0 align-top w-32">
+                        <TimeSlotVisual slotKey={key} rowLabel={rowLabel30} />
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            });
+            
+            return rows;
+          })()}
         </tbody>
       </table>
     </div>
