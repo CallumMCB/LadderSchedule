@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, name, password } = await req.json();
+    const { email, name, phone, password } = await req.json();
     
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       data: {
         email,
         name: name || null,
+        phone: phone || null,
         password: hashedPassword,
       },
     });

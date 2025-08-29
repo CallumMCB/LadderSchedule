@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,7 +35,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, password }),
+        body: JSON.stringify({ email, name, phone, password }),
       });
 
       if (response.ok) {
@@ -73,6 +74,16 @@ export default function RegisterPage() {
                 value={name} 
                 onChange={e => setName(e.target.value)} 
                 placeholder="Your name" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone (optional)</label>
+              <Input 
+                type="tel"
+                value={phone} 
+                onChange={e => setPhone(e.target.value)} 
+                placeholder="+1 (555) 123-4567" 
               />
             </div>
             
