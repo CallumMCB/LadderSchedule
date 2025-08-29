@@ -1024,7 +1024,7 @@ export default function TennisLadderScheduler() {
     'End date not set';
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
+    <div className="max-w-6xl mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
       {/* Ladder Info Header */}
       {ladderInfo?.currentLadder && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -1170,39 +1170,41 @@ export default function TennisLadderScheduler() {
       </div>
 
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 text-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
           <a href="/help" className="text-blue-600 hover:underline">
             Need help? View the visual guide →
           </a>
           {isBlockSelectMode && (
-            <div className="flex items-center gap-2 ml-4 px-2 py-1 bg-blue-100 rounded">
+            <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 rounded">
               <span className="text-blue-800 font-medium">Block Select Mode</span>
-              <span className="text-xs text-blue-600">
+              <span className="text-xs text-blue-600 hidden sm:inline">
                 {blockSelectCorners.length === 0 ? "Click first corner or drag to select" :
                  blockSelectCorners.length === 1 ? "Click second corner to complete rectangle" : ""}
               </span>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-600">Show times:</span>
-          <Button
-            variant={showEarlyTimes ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowEarlyTimes(!showEarlyTimes)}
-            className="text-xs"
-          >
-            {showEarlyTimes ? "Hide" : "Show"} early (6am-9:30am)
-          </Button>
-          <Button
-            variant={showLateTimes ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowLateTimes(!showLateTimes)}
-            className="text-xs"
-          >
-            {showLateTimes ? "Hide" : "Show"} late (9pm-9:30pm)
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+          <span className="text-gray-600 hidden sm:inline">Show times:</span>
+          <div className="flex gap-2">
+            <Button
+              variant={showEarlyTimes ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowEarlyTimes(!showEarlyTimes)}
+              className="text-xs flex-1 sm:flex-initial"
+            >
+              {showEarlyTimes ? "Hide" : "Show"} early
+            </Button>
+            <Button
+              variant={showLateTimes ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowLateTimes(!showLateTimes)}
+              className="text-xs flex-1 sm:flex-initial"
+            >
+              {showLateTimes ? "Hide" : "Show"} late
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1452,12 +1454,43 @@ export default function TennisLadderScheduler() {
         </div>
       )}
 
+      {/* Bottom Left Action Buttons */}
+      <div className="fixed bottom-4 left-2 sm:bottom-6 sm:left-6 z-40">
+        <div className="flex flex-col items-start gap-1 sm:gap-2">
+          <Button 
+            onClick={loadAllData} 
+            variant="outline"
+            size="sm"
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+          >
+            🔄 <span className="hidden sm:inline">Refresh Data</span>
+          </Button>
+          <Button 
+            onClick={() => setShowClearConfirmation(true)}
+            variant="outline"
+            size="sm"
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+          >
+            🗑️ <span className="hidden sm:inline">Clear All Unconfirmed</span>
+          </Button>
+          <Button 
+            onClick={performUndo}
+            variant="outline" 
+            size="sm"
+            disabled={undoStack.length === 0}
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+          >
+            ↶ <span className="hidden sm:inline">Undo ({undoStack.length})</span><span className="sm:hidden">({undoStack.length})</span>
+          </Button>
+        </div>
+      </div>
+
       {/* Sticky Save Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className="flex flex-col items-end gap-2">
+      <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-50">
+        <div className="flex flex-col items-end gap-1 sm:gap-2">
           {saveMsg && (
-            <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg">
-              <span className="text-sm text-muted-foreground">{saveMsg}</span>
+            <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 sm:px-3 sm:py-2 shadow-lg max-w-[200px] sm:max-w-none">
+              <span className="text-xs sm:text-sm text-muted-foreground">{saveMsg}</span>
             </div>
           )}
           <Button 
@@ -1467,42 +1500,20 @@ export default function TennisLadderScheduler() {
               setSelectedSlots(new Set());
             }}
             variant={isBlockSelectMode ? "default" : "outline"}
-            className="shadow-lg hover:shadow-xl transition-shadow"
-          >
-            {isBlockSelectMode ? "Exit Block Select" : "Block Select"}
-          </Button>
-          <Button 
-            onClick={() => setShowClearConfirmation(true)}
-            variant="outline"
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
             size="sm"
-            className="mb-2"
           >
-            Clear All Unconfirmed
-          </Button>
-          <Button 
-            onClick={performUndo}
-            variant="outline" 
-            size="sm"
-            disabled={undoStack.length === 0}
-            className="mb-2"
-          >
-            Undo ({undoStack.length})
-          </Button>
-          <Button 
-            onClick={loadAllData} 
-            variant="outline"
-            size="sm"
-            className="mb-2"
-          >
-            🔄 Refresh Data
+            <span className="sm:hidden">{isBlockSelectMode ? "Exit Block" : "Block"}</span>
+            <span className="hidden sm:inline">{isBlockSelectMode ? "Exit Block Select" : "Block Select"}</span>
           </Button>
           <Button 
             onClick={saveAvailability} 
             disabled={saving || !!isAfterEndDate}
-            className="shadow-lg hover:shadow-xl transition-shadow"
+            className="shadow-lg hover:shadow-xl transition-shadow text-sm sm:text-base"
             size="lg"
           >
-            {saving ? "Saving…" : isAfterEndDate ? "Ladder Ended" : "Save Changes"}
+            <span className="sm:hidden">{saving ? "Saving…" : isAfterEndDate ? "Ended" : "Save"}</span>
+            <span className="hidden sm:inline">{saving ? "Saving…" : isAfterEndDate ? "Ladder Ended" : "Save Changes"}</span>
           </Button>
         </div>
       </div>
