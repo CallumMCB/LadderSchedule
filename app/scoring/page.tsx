@@ -168,6 +168,39 @@ export default function ScoringPage() {
     return results;
   }
 
+  function getSetScore(scoreString: string, setIndex: number): string {
+    if (!scoreString) return "";
+    const sets = scoreString.split(',');
+    return sets[setIndex] || "";
+  }
+
+  function updateSetScore(matchId: string, field: 'team1Score' | 'team2Score', setIndex: number, value: string) {
+    // Only allow positive integers
+    if (value !== "" && (!/^\d+$/.test(value) || parseInt(value) < 0)) {
+      return;
+    }
+    
+    setScores(prev => {
+      const currentScore = prev[matchId]?.[field] || "";
+      const sets = currentScore.split(',');
+      
+      // Ensure we have enough set slots
+      while (sets.length < matchFormat.sets) {
+        sets.push("");
+      }
+      
+      sets[setIndex] = value;
+      
+      return {
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          [field]: sets.join(',')
+        }
+      };
+    });
+  }
+
   function updateScore(matchId: string, field: 'team1Score' | 'team2Score', value: string) {
     // Only allow positive integers
     if (value === "" || (/^\d+$/.test(value) && parseInt(value) >= 0)) {
@@ -185,12 +218,51 @@ export default function ScoringPage() {
     setSaving(true);
     try {
       const scoresToSave = Object.entries(scores)
-        .filter(([_, scoreData]) => scoreData.team1Score !== "" && scoreData.team2Score !== "")
-        .map(([matchId, scoreData]) => ({
-          matchId,
-          team1Score: parseInt(scoreData.team1Score),
-          team2Score: parseInt(scoreData.team2Score)
-        }));
+        .filter(([_, scoreData]) => {
+          // For set-based scoring, check if at least one set is complete for both teams
+          if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
+            const team1Sets = scoreData.team1Score.split(',');
+            const team2Sets = scoreData.team2Score.split(',');
+            return team1Sets.some(s => s !== "") && team2Sets.some(s => s !== "");
+          }
+          // For single score, require both scores
+          return scoreData.team1Score !== "" && scoreData.team2Score !== "";
+        })
+        .map(([matchId, scoreData]) => {
+          // Calculate final scores based on match format
+          let team1FinalScore = 0;
+          let team2FinalScore = 0;
+          
+          if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
+            // Set-based scoring
+            const team1Sets = scoreData.team1Score.split(',').map(s => parseInt(s) || 0);
+            const team2Sets = scoreData.team2Score.split(',').map(s => parseInt(s) || 0);
+            
+            if (matchFormat.winnerBy === 'sets') {
+              // Count sets won
+              for (let i = 0; i < Math.max(team1Sets.length, team2Sets.length); i++) {
+                const t1Games = team1Sets[i] || 0;
+                const t2Games = team2Sets[i] || 0;
+                if (t1Games > t2Games) team1FinalScore++;
+                else if (t2Games > t1Games) team2FinalScore++;
+              }
+            } else {
+              // Count total games
+              team1FinalScore = team1Sets.reduce((sum, games) => sum + games, 0);
+              team2FinalScore = team2Sets.reduce((sum, games) => sum + games, 0);
+            }
+          } else {
+            // Single score format
+            team1FinalScore = parseInt(scoreData.team1Score) || 0;
+            team2FinalScore = parseInt(scoreData.team2Score) || 0;
+          }
+          
+          return {
+            matchId,
+            team1Score: team1FinalScore,
+            team2Score: team2FinalScore
+          };
+        });
 
       if (scoresToSave.length === 0) {
         setSaveMsg("No scores to save");
@@ -519,33 +591,60 @@ export default function ScoringPage() {
 
                           return (
                             <td key={colTeam.id} className="p-2">
-                              <div className="flex items-center justify-center gap-1 text-sm">
-                                <Input
-                                  type="text"
-                                  value={rowTeamScore}
-                                  onChange={(e) => updateScore(
-                                    match.id, 
-                                    isRowTeamFirst ? 'team1Score' : 'team2Score', 
-                                    e.target.value
-                                  )}
-                                  className="w-12 h-8 text-center text-xs"
-                                  placeholder="0"
-                                />
-                                <span className="text-gray-400">:</span>
-                                <Input
-                                  type="text"
-                                  value={colTeamScore}
-                                  onChange={(e) => updateScore(
-                                    match.id, 
-                                    isRowTeamFirst ? 'team2Score' : 'team1Score', 
-                                    e.target.value
-                                  )}
-                                  className="w-12 h-8 text-center text-xs"
-                                  placeholder="0"
-                                />
-                              </div>
-                              <div className="text-xs text-center mt-1 text-gray-500">
-                                {new Date(match.startAt).toLocaleDateString()}
+                              <div className="space-y-1">
+                                {/* Set headers */}
+                                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
+                                  {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                    <div key={setIndex} className="text-center text-xs font-medium text-gray-600">
+                                      S{setIndex + 1}
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {/* Games grid - team scores as rows, sets as columns */}
+                                <div className="space-y-0.5">
+                                  {/* Row team games */}
+                                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
+                                    {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                      <Input
+                                        key={`row-${setIndex}`}
+                                        type="text"
+                                        value={getSetScore(rowTeamScore, setIndex)}
+                                        onChange={(e) => updateSetScore(
+                                          match.id, 
+                                          isRowTeamFirst ? 'team1Score' : 'team2Score', 
+                                          setIndex,
+                                          e.target.value
+                                        )}
+                                        className="w-10 h-6 text-center text-xs"
+                                        placeholder="0"
+                                      />
+                                    ))}
+                                  </div>
+                                  
+                                  {/* Column team games */}
+                                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
+                                    {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                      <Input
+                                        key={`col-${setIndex}`}
+                                        type="text"
+                                        value={getSetScore(colTeamScore, setIndex)}
+                                        onChange={(e) => updateSetScore(
+                                          match.id, 
+                                          isRowTeamFirst ? 'team2Score' : 'team1Score', 
+                                          setIndex,
+                                          e.target.value
+                                        )}
+                                        className="w-10 h-6 text-center text-xs"
+                                        placeholder="0"
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <div className="text-xs text-center mt-1 text-gray-500">
+                                  {new Date(match.startAt).toLocaleDateString()}
+                                </div>
                               </div>
                             </td>
                           );
@@ -635,8 +734,10 @@ export default function ScoringPage() {
                                     {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                   </span>
                                   {hasScore && (
-                                    <span className="font-mono bg-muted px-2 py-1 rounded">
-                                      {scoreData.team1Score}:{scoreData.team2Score}
+                                    <span className="font-mono bg-muted px-2 py-1 rounded text-xs">
+                                      {scoreData.team1Score.includes(',') 
+                                        ? `${scoreData.team1Score} : ${scoreData.team2Score}` 
+                                        : `${scoreData.team1Score}:${scoreData.team2Score}`}
                                     </span>
                                   )}
                                   <span className="text-blue-600 text-xs">📅 Scheduled</span>
@@ -745,8 +846,10 @@ export default function ScoringPage() {
                                     {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                   </span>
                                   {hasScore && (
-                                    <span className="font-mono bg-muted px-2 py-1 rounded">
-                                      {scoreData.team1Score}:{scoreData.team2Score}
+                                    <span className="font-mono bg-muted px-2 py-1 rounded text-xs">
+                                      {scoreData.team1Score.includes(',') 
+                                        ? `${scoreData.team1Score} : ${scoreData.team2Score}` 
+                                        : `${scoreData.team1Score}:${scoreData.team2Score}`}
                                     </span>
                                   )}
                                   <span className="text-green-600 text-xs">✓ Complete</span>
@@ -794,8 +897,10 @@ export default function ScoringPage() {
                                     {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                   </span>
                                   {hasScore && (
-                                    <span className="font-mono bg-muted px-2 py-1 rounded">
-                                      {scoreData.team1Score}:{scoreData.team2Score}
+                                    <span className="font-mono bg-muted px-2 py-1 rounded text-xs">
+                                      {scoreData.team1Score.includes(',') 
+                                        ? `${scoreData.team1Score} : ${scoreData.team2Score}` 
+                                        : `${scoreData.team1Score}:${scoreData.team2Score}`}
                                     </span>
                                   )}
                                   <span className="text-green-600 text-xs">✓ Complete</span>
@@ -840,8 +945,8 @@ export default function ScoringPage() {
             onClick={() => {
               setShowScheduleModal(null);
               setScheduleDate("");
-              setScheduleHour("");
-              setScheduleMinute("");
+              setScheduleHour("18");
+              setScheduleMinute("00");
             }}
           />
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-4 w-80">
@@ -907,8 +1012,8 @@ export default function ScoringPage() {
                 onClick={() => {
                   setShowScheduleModal(null);
                   setScheduleDate("");
-                  setScheduleHour("");
-                  setScheduleMinute("");
+                  setScheduleHour("18");
+                  setScheduleMinute("00");
                 }}
                 className="px-3 py-1.5 text-xs text-gray-600 border rounded hover:bg-gray-50"
               >
@@ -951,16 +1056,21 @@ export default function ScoringPage() {
               
               <div>
                 <label className="block text-sm font-medium mb-2">Games per Set</label>
-                <select
+                <Input
+                  type="number"
+                  min="1"
+                  max="20"
                   value={matchFormat.gamesPerSet}
-                  onChange={(e) => setMatchFormat(prev => ({ ...prev, gamesPerSet: parseInt(e.target.value) }))}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value >= 1 && value <= 20) {
+                      setMatchFormat(prev => ({ ...prev, gamesPerSet: value }));
+                    }
+                  }}
                   className="w-full p-2 border rounded-lg"
-                >
-                  <option value={4}>4 Games</option>
-                  <option value={6}>6 Games</option>
-                  <option value={8}>8 Games</option>
-                  <option value={10}>10 Games</option>
-                </select>
+                  placeholder="6"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter number of games per set (1-20)</p>
               </div>
               
               <div>
