@@ -39,9 +39,10 @@ export async function GET(req: NextRequest) {
     });
 
     // Get user names for team IDs in matches
-    const teamIds = [...new Set([...recentMatches.map(m => m.team1Id), ...recentMatches.map(m => m.team2Id)])];
+    const allTeamIds = [...recentMatches.map(m => m.team1Id), ...recentMatches.map(m => m.team2Id)];
+    const uniqueTeamIds = Array.from(new Set(allTeamIds));
     const users = await prisma.user.findMany({
-      where: { id: { in: teamIds } },
+      where: { id: { in: uniqueTeamIds } },
       select: { id: true, name: true, email: true }
     });
     const userMap = new Map(users.map(u => [u.id, u]));
