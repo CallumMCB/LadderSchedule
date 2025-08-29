@@ -937,9 +937,10 @@ export default function TennisLadderScheduler() {
       const savePromises: Promise<Response>[] = [];
       const teamNames: string[] = [];
       
-      for (const [teamId, changes] of teamsToSave.entries()) {
+      Array.from(teamsToSave.keys()).forEach(teamId => {
+        const changes = teamsToSave.get(teamId)!;
         const team = teamsData.teams.find(t => t.id === teamId);
-        if (!team) continue;
+        if (!team) return;
         
         teamNames.push(team.member1.name || team.member1.email);
         
@@ -972,7 +973,7 @@ export default function TennisLadderScheduler() {
             })
           );
         }
-      }
+      });
       
       const responses = await Promise.all(savePromises);
       const allSuccess = responses.every(r => r.ok);
