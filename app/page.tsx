@@ -1482,20 +1482,20 @@ export default function TennisLadderScheduler() {
 
       <details>
         <summary className="cursor-pointer text-sm text-muted-foreground">Recent Changes</summary>
-        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-2">
-          <div className="font-medium">Latest Updates:</div>
-          <ul className="space-y-1 text-muted-foreground">
-            <li>• ✅ Three-state availability system (available → not available → none)</li>
-            <li>• ✅ Proxy availability with team color stripes</li>
-            <li>• ✅ Ownership transfer by clicking proxy slots</li>
-            <li>• ✅ Solo players fill both team rows automatically</li>
-            <li>• ✅ Show availability set by others (with edit ability)</li>
-            <li>• ✅ Improved proxy cycling when cells have existing values</li>
-            <li>• ✅ Bidirectional partner unlinking</li>
-            <li>• ✅ Hidden teams functionality with toggle</li>
-            <li>• ✅ Enhanced match detection with flexible time comparison</li>
-            <li>• ✅ Calendar excludes teams with confirmed matches</li>
-          </ul>
+        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-1">
+          <div className="font-medium mb-2">Git Commit History:</div>
+          <div className="space-y-1 text-muted-foreground font-mono">
+            <div>• <span className="text-green-600">9b1174b</span> Fix TypeScript compilation error</div>
+            <div>• <span className="text-green-600">01d0c49</span> Fix availability display and solo player handling</div>
+            <div>• <span className="text-green-600">8c2efce</span> Fix proxy cycling and bidirectional partner unlinking</div>
+            <div>• <span className="text-green-600">fd76000</span> Revert to simple stripe logic to fix compilation errors</div>
+            <div>• <span className="text-green-600">cd654d2</span> Fix stripe color logic scope issues</div>
+            <div>• <span className="text-green-600">30a4bb2</span> Simplify proxy detection logic to fix scope issue</div>
+            <div>• <span className="text-green-600">d39683a</span> Rename myAvailSetByProxy to myProxySlots</div>
+            <div>• <span className="text-green-600">4f97b22</span> Fix variable name encoding issue in proxy detection</div>
+            <div>• <span className="text-green-600">224d05b</span> Fix line merge issue in stripe logic</div>
+            <div>• <span className="text-green-600">00acf57</span> Implement complete three-state availability system</div>
+          </div>
         </div>
       </details>
 
