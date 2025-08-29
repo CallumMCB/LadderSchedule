@@ -137,6 +137,7 @@ export default function TennisLadderScheduler() {
   // Time range display state
   const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
   const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
+  const [showHiddenTeams, setShowHiddenTeams] = useState(false); // Show teams with confirmed matches
   
   // Undo state
   const [undoStack, setUndoStack] = useState<Array<{
@@ -1259,6 +1260,7 @@ export default function TennisLadderScheduler() {
         ladderInfo={ladderInfo}
         showEarlyTimes={showEarlyTimes}
         showLateTimes={showLateTimes}
+        showHiddenTeams={showHiddenTeams}
       />
 
       <details>
@@ -1512,6 +1514,14 @@ export default function TennisLadderScheduler() {
           >
             ↶ <span className="hidden sm:inline">Undo ({undoStack.length})</span><span className="sm:hidden">({undoStack.length})</span>
           </Button>
+          <Button 
+            onClick={() => setShowHiddenTeams(!showHiddenTeams)}
+            variant={showHiddenTeams ? "default" : "outline"}
+            size="sm"
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+          >
+            👁️ <span className="hidden sm:inline">{showHiddenTeams ? "Hide" : "Show"} Matched Teams</span>
+          </Button>
         </div>
       </div>
 
@@ -1700,7 +1710,8 @@ function AvailabilityGrid({
   onBlockSelectClick,
   ladderInfo,
   showEarlyTimes,
-  showLateTimes
+  showLateTimes,
+  showHiddenTeams
 }: { 
   days: Date[]; 
   myAvail: Set<string>; 
@@ -1745,10 +1756,11 @@ function AvailabilityGrid({
   };
   showEarlyTimes: boolean;
   showLateTimes: boolean;
+  showHiddenTeams: boolean;
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  // Get other teams, excluding those with confirmed matches
+  // Get other teams, conditionally excluding those with confirmed matches
   const otherTeams = teamsData.teams.filter(team => {
     if (team.id === teamsData.myTeamId) return false; // Skip my team
     
@@ -1761,13 +1773,18 @@ function AvailabilityGrid({
       );
       
       if (existingMatch) {
-        console.log('Excluding team from calendar view due to existing match:', {
+        console.log('Team has existing match:', {
           teamId: team.id,
           myTeamId: myTeamId,
           matchId: existingMatch.id,
-          matchTime: existingMatch.startAt
+          matchTime: existingMatch.startAt,
+          showHiddenTeams: showHiddenTeams
         });
-        return false; // Already have a match with this team
+        
+        // Only hide if showHiddenTeams is false
+        if (!showHiddenTeams) {
+          return false; // Hide teams with existing matches
+        }
       }
     }
     
