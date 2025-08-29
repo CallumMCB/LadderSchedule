@@ -181,7 +181,8 @@ export async function GET(req: NextRequest) {
             availability: userAvailability, // Same availability for both rows
             setByUserIds: userSetByUserIds
           },
-          color: teamColors[colorIndex % teamColors.length]
+          color: teamColors[colorIndex % teamColors.length],
+          lookingForPartner: true // Mark solo players
         });
         
         processedUsers.add(user.id);

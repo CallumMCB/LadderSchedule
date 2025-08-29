@@ -256,6 +256,64 @@ export default function TennisLadderScheduler() {
     }
   }, [updateCurrentWeekData, allAvailabilities, allMatches]);
 
+  // Sync my availability from teams data and load unavailable slots
+  useEffect(() => {
+    if (teamsData.teams.length > 0 && teamsData.myTeamId && teamsData.currentUserId) {
+      const myTeamObj = teamsData.teams.find(t => t.id === teamsData.myTeamId);
+      if (myTeamObj) {
+        // Determine which member I am
+        const isMember1 = myTeamObj.member1.id === teamsData.currentUserId;
+        const isMember2 = myTeamObj.member2?.id === teamsData.currentUserId;
+        
+        if (isMember1 || isMember2) {
+          const myMemberData = isMember1 ? myTeamObj.member1 : myTeamObj.member2!;
+          
+          // Get all availability for this member
+          const myAllAvailability = myMemberData.availability || [];
+          const mySetByUserIds = myMemberData.setByUserIds || [];
+          
+          // Teams data contains "available" slots - update my available state
+          setMyAvail(new Set(myAllAvailability));
+          
+          // For partner availability
+          const partnerMemberData = isMember1 ? myTeamObj.member2 : myTeamObj.member1;
+          if (partnerMemberData && partnerMemberData.id !== teamsData.currentUserId) {
+            setPartnerAvail(new Set(partnerMemberData.availability || []));
+          } else if (partnerMemberData?.id === teamsData.currentUserId) {
+            // Solo player - partner is same as me
+            setPartnerAvail(new Set(myAllAvailability));
+          }
+          
+          // Track proxy slots
+          const proxySlots = new Set<string>();
+          myAllAvailability.forEach((slot: string, index: number) => {
+            const setByUserId = mySetByUserIds[index];
+            if (setByUserId && setByUserId !== teamsData.currentUserId) {
+              proxySlots.add(slot);
+            }
+          });
+          setMyProxySlots(proxySlots);
+          
+          // Also load my unavailable slots from personal API since teams data doesn't include them
+          loadPersonalUnavailability();
+        }
+      }
+    }
+  }, [teamsData, teamsData.teams, teamsData.myTeamId, teamsData.currentUserId]);
+  
+  // Load unavailable slots from personal API
+  const loadPersonalUnavailability = async () => {
+    try {
+      const myResponse = await fetch(`/api/availability?weekStart=${weekStart.toISOString()}`);
+      if (myResponse.ok) {
+        const data = await myResponse.json();
+        setMyUnavail(new Set(data.myUnavailableSlots || []));
+      }
+    } catch (error) {
+      console.error("Failed to load personal unavailability:", error);
+    }
+  };
+
   // Global mouse up handler for drag selection
 
 
@@ -545,10 +603,17 @@ export default function TennisLadderScheduler() {
         } else if (actingAsPlayer === team.member2?.id) {
           currentActualAvailable = team.member2?.availability.includes(key) || false;
         } else if (!actingAsPlayer) {
-          // Acting for both members - consider available if both are available
+          // Acting for both members
           const member1Available = team.member1.availability.includes(key);
           const member2Available = team.member2?.availability.includes(key) || false;
-          currentActualAvailable = member1Available && member2Available;
+          
+          // For solo players (both members are same person), just use member1's availability
+          if (team.lookingForPartner || (team.member2 && team.member2.id === team.member1.id)) {
+            currentActualAvailable = member1Available;
+          } else {
+            // For real teams, consider available if both are available
+            currentActualAvailable = member1Available && member2Available;
+          }
         }
       }
       
@@ -569,17 +634,17 @@ export default function TennisLadderScheduler() {
       });
       
       // Three-state cycle: available → not_available → none → available
-      // Need to consider both proxy state AND existing database state
-      if (effectiveAvailable && !hasProxyUnavailable) {
-        // Currently Available (either from DB or proxy) → Not Available  
+      // Determine the current effective display state
+      if (effectiveAvailable) {
+        // Currently showing as Available → change to Not Available  
         setProxyAvail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
         setProxyUnavail(prev => new Set(prev).add(key));
-      } else if (hasProxyUnavailable || (!effectiveAvailable && (hasProxyAvailable || currentActualAvailable))) {
-        // Currently Not Available (from proxy unavailable OR was available before) → None
+      } else if (hasProxyUnavailable) {
+        // Currently showing as Not Available (via proxy) → change to None (remove proxy)
         setProxyUnavail(prev => {
           const next = new Set(prev);
           next.delete(key);
@@ -590,8 +655,16 @@ export default function TennisLadderScheduler() {
           next.delete(key);
           return next;
         });
+      } else if (currentActualAvailable) {
+        // Has existing available state from DB, but no proxy modifications → make unavailable
+        setProxyAvail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setProxyUnavail(prev => new Set(prev).add(key));
       } else {
-        // None (no proxy modifications and no existing state) → Available
+        // None (no proxy modifications, no existing available state) → Available
         setProxyAvail(prev => new Set(prev).add(key));
         setProxyUnavail(prev => {
           const next = new Set(prev);
@@ -1408,15 +1481,22 @@ export default function TennisLadderScheduler() {
       />
 
       <details>
-        <summary className="cursor-pointer text-sm text-muted-foreground">Debug</summary>
-        <pre className="text-xs bg-muted/50 p-3 rounded-xl overflow-auto">{JSON.stringify({
-          weekStart,
-          myAvail: Array.from(myAvail).slice(0, 5),
-          partnerAvail: Array.from(partnerAvail).slice(0, 5),
-          teamAvailCount: Array.from(teamAvail).length,
-          matches: teamsData.matches,
-          myTeamId: teamsData.myTeamId,
-        }, null, 2)}</pre>
+        <summary className="cursor-pointer text-sm text-muted-foreground">Recent Changes</summary>
+        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-2">
+          <div className="font-medium">Latest Updates:</div>
+          <ul className="space-y-1 text-muted-foreground">
+            <li>• ✅ Three-state availability system (available → not available → none)</li>
+            <li>• ✅ Proxy availability with team color stripes</li>
+            <li>• ✅ Ownership transfer by clicking proxy slots</li>
+            <li>• ✅ Solo players fill both team rows automatically</li>
+            <li>• ✅ Show availability set by others (with edit ability)</li>
+            <li>• ✅ Improved proxy cycling when cells have existing values</li>
+            <li>• ✅ Bidirectional partner unlinking</li>
+            <li>• ✅ Hidden teams functionality with toggle</li>
+            <li>• ✅ Enhanced match detection with flexible time comparison</li>
+            <li>• ✅ Calendar excludes teams with confirmed matches</li>
+          </ul>
+        </div>
       </details>
 
       {/* Match Confirmation Popup */}
