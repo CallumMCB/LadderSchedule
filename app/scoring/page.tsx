@@ -592,57 +592,74 @@ export default function ScoringPage() {
                           return (
                             <td key={colTeam.id} className="p-2">
                               <div className="space-y-1">
-                                {/* Set headers */}
-                                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
-                                  {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                    <div key={setIndex} className="text-center text-xs font-medium text-gray-600">
-                                      S{setIndex + 1}
-                                    </div>
-                                  ))}
-                                </div>
+                                {/* Compact scoring table */}
+                                <table className="text-xs border-separate border-spacing-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="w-3"></th>
+                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                        <th key={setIndex} className="text-center text-xs font-medium text-gray-600 px-1">
+                                          S{setIndex + 1}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {/* Row team games */}
+                                    <tr>
+                                      <td className="pr-1">
+                                        <div 
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ backgroundColor: rowTeam.color }}
+                                        />
+                                      </td>
+                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                        <td key={setIndex} className="px-0.5">
+                                          <Input
+                                            type="text"
+                                            value={getSetScore(rowTeamScore, setIndex)}
+                                            onChange={(e) => updateSetScore(
+                                              match.id, 
+                                              isRowTeamFirst ? 'team1Score' : 'team2Score', 
+                                              setIndex,
+                                              e.target.value
+                                            )}
+                                            className="w-7 h-5 text-center text-xs p-0 border"
+                                            placeholder="0"
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                    
+                                    {/* Column team games */}
+                                    <tr>
+                                      <td className="pr-1">
+                                        <div 
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ backgroundColor: colTeam.color }}
+                                        />
+                                      </td>
+                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                        <td key={setIndex} className="px-0.5">
+                                          <Input
+                                            type="text"
+                                            value={getSetScore(colTeamScore, setIndex)}
+                                            onChange={(e) => updateSetScore(
+                                              match.id, 
+                                              isRowTeamFirst ? 'team2Score' : 'team1Score', 
+                                              setIndex,
+                                              e.target.value
+                                            )}
+                                            className="w-7 h-5 text-center text-xs p-0 border"
+                                            placeholder="0"
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 
-                                {/* Games grid - team scores as rows, sets as columns */}
-                                <div className="space-y-0.5">
-                                  {/* Row team games */}
-                                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
-                                    {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                      <Input
-                                        key={`row-${setIndex}`}
-                                        type="text"
-                                        value={getSetScore(rowTeamScore, setIndex)}
-                                        onChange={(e) => updateSetScore(
-                                          match.id, 
-                                          isRowTeamFirst ? 'team1Score' : 'team2Score', 
-                                          setIndex,
-                                          e.target.value
-                                        )}
-                                        className="w-10 h-6 text-center text-xs"
-                                        placeholder="0"
-                                      />
-                                    ))}
-                                  </div>
-                                  
-                                  {/* Column team games */}
-                                  <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${matchFormat.sets}, 1fr)` }}>
-                                    {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                      <Input
-                                        key={`col-${setIndex}`}
-                                        type="text"
-                                        value={getSetScore(colTeamScore, setIndex)}
-                                        onChange={(e) => updateSetScore(
-                                          match.id, 
-                                          isRowTeamFirst ? 'team2Score' : 'team1Score', 
-                                          setIndex,
-                                          e.target.value
-                                        )}
-                                        className="w-10 h-6 text-center text-xs"
-                                        placeholder="0"
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                                
-                                <div className="text-xs text-center mt-1 text-gray-500">
+                                <div className="text-xs text-center text-gray-500">
                                   {new Date(match.startAt).toLocaleDateString()}
                                 </div>
                               </div>
