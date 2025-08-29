@@ -111,7 +111,7 @@ export default function TennisLadderScheduler() {
   const [myUnavail, setMyUnavail] = useState<Set<string>>(new Set());
   const [partnerAvail, setPartnerAvail] = useState<Set<string>>(new Set());
   const [partnerAvailSetByMe, setPartnerAvailSetByMe] = useState<Set<string>>(new Set());
-  const [myAvailSetByProxy, setMyAvailSetByProxy] = useState<Set<string>>(new Set()); // My slots set by others
+  const [myProxySlots, setMyProxySlots] = useState<Set<string>>(new Set()); // My slots set by others
   const [partnerAvailSetByProxy, setPartnerAvailSetByProxy] = useState<Set<string>>(new Set()); // Partner slots set by others
   const [slotSetByUserIds, setSlotSetByUserIds] = useState<Map<string, string>>(new Map()); // Map slot to userId who set it  
   const [proxyTakeoverSlots, setProxyTakeoverSlots] = useState<Set<string>>(new Set()); // Slots taken over from proxy
@@ -149,7 +149,7 @@ export default function TennisLadderScheduler() {
     myUnavail: Set<string>;
     partnerAvail: Set<string>;
     partnerAvailSetByMe: Set<string>;
-    myAvailSetByProxy?: Set<string>;
+    myProxySlots?: Set<string>;
     partnerAvailSetByProxy?: Set<string>;
     slotSetByUserIds?: Map<string, string>;
     proxyTakeoverSlots?: Set<string>;
@@ -348,7 +348,7 @@ export default function TennisLadderScheduler() {
         myUnavail: new Set(myUnavail),
         partnerAvail: new Set(partnerAvail),
         partnerAvailSetByMe: new Set(partnerAvailSetByMe),
-        myAvailSetByProxy: new Set(myAvailSetByProxy),
+        myProxySlots: new Set(myProxySlots),
         partnerAvailSetByProxy: new Set(partnerAvailSetByProxy),
         slotSetByUserIds: new Map(slotSetByUserIds),
         proxyTakeoverSlots: new Set(proxyTakeoverSlots)
@@ -366,7 +366,7 @@ export default function TennisLadderScheduler() {
     setMyUnavail(new Set(lastState.myUnavail));
     setPartnerAvail(new Set(lastState.partnerAvail));
     setPartnerAvailSetByMe(new Set(lastState.partnerAvailSetByMe));
-    setMyAvailSetByProxy(new Set(lastState.myAvailSetByProxy || []));
+    setMyProxySlots(new Set(lastState.myProxySlots || []));
     setPartnerAvailSetByProxy(new Set(lastState.partnerAvailSetByProxy || []));
     setSlotSetByUserIds(new Map(lastState.slotSetByUserIds || []));
     setProxyTakeoverSlots(new Set(lastState.proxyTakeoverSlots || []));
@@ -399,7 +399,7 @@ export default function TennisLadderScheduler() {
     // Clear proxy takeover tracking
     setProxyTakeoverSlots(new Set());
     
-    // Note: Don't clear myAvailSetByProxy and partnerAvailSetByProxy as these track existing proxy data
+    // Note: Don't clear myProxySlots and partnerAvailSetByProxy as these track existing proxy data
     
     // Clear only partner availability that I set, preserve what they set themselves
     const partnerSlotsISet = new Set(partnerAvailSetByMe); // Capture current state before clearing
@@ -1107,7 +1107,7 @@ export default function TennisLadderScheduler() {
         
         setSlotSetByUserIds(userIdMap);
         
-        setMyAvailSetByProxy(myProxySlots);
+        setMyProxySlots(myProxySlots);
         setPartnerAvailSetByProxy(partnerProxySlots);
         
         if (data.partnerEmail) {
@@ -2288,7 +2288,7 @@ function AvailabilityGrid({
                 
                 const teamDataMyProxy = myAvailIndex >= 0 && myTeamObj.member1.setByUserIds[myAvailIndex] !== myTeamObj.member1.id;
                 const teamDataPartnerProxy = partnerAvailIndex >= 0 && myTeamObj.member2?.setByUserIds[partnerAvailIndex] !== myTeamObj.member2?.id;
-                const localMyProxy = myAvailSetByProxy.has(slotKey);
+                const localMyProxy = myProxySlots.has(slotKey);
                 const localPartnerProxy = partnerAvailSetByProxy.has(slotKey);
                 
                 mySetByProxy = teamDataMyProxy || localMyProxy;
