@@ -46,7 +46,8 @@ export default function ScoringPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [showScheduleModal, setShowScheduleModal] = useState<{team1Id: string; team2Id: string} | null>(null);
   const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleHour, setScheduleHour] = useState("");
+  const [scheduleMinute, setScheduleMinute] = useState("");
   const [selectedLadderId, setSelectedLadderId] = useState<string>("");
   const [ladderInfo, setLadderInfo] = useState<{
     currentLadder?: { id: string; name: string; number: number; endDate: string };
@@ -242,14 +243,30 @@ export default function ScoringPage() {
   }
 
   async function scheduleMatch() {
-    if (!showScheduleModal || !scheduleDate || !scheduleTime) {
-      setSaveMsg("Please select date and time");
+    if (!showScheduleModal || !scheduleDate || !scheduleHour || !scheduleMinute) {
+      setSaveMsg("Please select date, hour, and minute");
+      setTimeout(() => setSaveMsg(""), 2000);
+      return;
+    }
+
+    // Validate hour range
+    const hour = parseInt(scheduleHour);
+    if (hour < 6 || hour > 9) {
+      setSaveMsg("Hour must be between 6 and 9");
+      setTimeout(() => setSaveMsg(""), 2000);
+      return;
+    }
+
+    // Validate minute values
+    if (scheduleMinute !== "00" && scheduleMinute !== "30") {
+      setSaveMsg("Minutes must be 00 or 30");
       setTimeout(() => setSaveMsg(""), 2000);
       return;
     }
 
     try {
-      const matchDateTime = new Date(`${scheduleDate}T${scheduleTime}:00.000Z`);
+      const timeString = `${scheduleHour.padStart(2, '0')}:${scheduleMinute}`;
+      const matchDateTime = new Date(`${scheduleDate}T${timeString}:00.000Z`);
       
       // First, confirm the match
       const response = await fetch('/api/matches/confirm', {
@@ -338,7 +355,8 @@ export default function ScoringPage() {
         setSaveMsg("Match scheduled and added to calendars!");
         setShowScheduleModal(null);
         setScheduleDate("");
-        setScheduleTime("");
+        setScheduleHour("");
+        setScheduleMinute("");
         await loadTeamsAndMatches();
         setTimeout(() => setSaveMsg(""), 3000);
       } else {
@@ -803,7 +821,8 @@ export default function ScoringPage() {
             onClick={() => {
               setShowScheduleModal(null);
               setScheduleDate("");
-              setScheduleTime("");
+              setScheduleHour("");
+              setScheduleMinute("");
             }}
           />
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-4 w-80">
@@ -831,26 +850,36 @@ export default function ScoringPage() {
                 />
               </div>
               
-              <div>
-                <label className="block text-xs font-medium mb-1">Time</label>
-                <select
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                  className="w-full p-1.5 text-sm border rounded"
-                >
-                  <option value="">Select time</option>
-                  {Array.from({ length: 16 }, (_, i) => {
-                    const hour = Math.floor(6 + i / 2);
-                    const minute = i % 2 === 0 ? '00' : '30';
-                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute}`;
-                    const displayTime = `${((hour + 11) % 12) + 1}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
-                    return (
-                      <option key={timeStr} value={timeStr}>
-                        {displayTime}
-                      </option>
-                    );
-                  })}
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Hour</label>
+                  <input
+                    type="number"
+                    min="6"
+                    max="9"
+                    value={scheduleHour}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "" || (parseInt(value) >= 6 && parseInt(value) <= 9)) {
+                        setScheduleHour(value);
+                      }
+                    }}
+                    className="w-full p-1.5 text-sm border rounded text-center"
+                    placeholder="6-9"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Minutes</label>
+                  <select
+                    value={scheduleMinute}
+                    onChange={(e) => setScheduleMinute(e.target.value)}
+                    className="w-full p-1.5 text-sm border rounded"
+                  >
+                    <option value="">Select</option>
+                    <option value="00">00</option>
+                    <option value="30">30</option>
+                  </select>
+                </div>
               </div>
             </div>
             
@@ -859,7 +888,8 @@ export default function ScoringPage() {
                 onClick={() => {
                   setShowScheduleModal(null);
                   setScheduleDate("");
-                  setScheduleTime("");
+                  setScheduleHour("");
+                  setScheduleMinute("");
                 }}
                 className="px-3 py-1.5 text-xs text-gray-600 border rounded hover:bg-gray-50"
               >
