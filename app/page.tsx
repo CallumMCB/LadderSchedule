@@ -2303,8 +2303,8 @@ function AvailabilityGrid({
                   >
                     {/* Show proxy stripes if my availability was set by someone else */}
                     {iAvailable && mySetByProxy && (() => {
-                      // Get the team color of whoever set this proxy
-                      const setByUserId = slotSetByUserIds.get(slotKey);
+                      // Get the team color of whoever set this proxy from team data
+                      const setByUserId = myAvailIndex >= 0 ? myTeamObj.member1.setByUserIds[myAvailIndex] : null;
                       const setByTeam = setByUserId ? teamsData.teams.find(t => 
                         t.member1.id === setByUserId || t.member2?.id === setByUserId
                       ) : null;
@@ -2331,8 +2331,8 @@ function AvailabilityGrid({
                   >
                     {/* Show proxy stripes if partner's availability was set by someone else */}
                     {partnerAvailable && partnerSetByProxy && (() => {
-                      // Get the team color of whoever set this proxy
-                      const setByUserId = slotSetByUserIds.get(slotKey);
+                      // Get the team color of whoever set this proxy from team data
+                      const setByUserId = partnerAvailIndex >= 0 && myTeamObj.member2 ? myTeamObj.member2.setByUserIds[partnerAvailIndex] : null;
                       const setByTeam = setByUserId ? teamsData.teams.find(t => 
                         t.member1.id === setByUserId || t.member2?.id === setByUserId
                       ) : null;
@@ -2356,8 +2356,14 @@ function AvailabilityGrid({
                     >
                       {/* Show proxy stripes on solid overlay if either was set by proxy */}
                       {(mySetByProxy || partnerSetByProxy) && (() => {
-                        // Get the team color of whoever set this proxy
-                        const setByUserId = slotSetByUserIds.get(slotKey);
+                        // Get the team color of whoever set this proxy from team data
+                        let setByUserId = null;
+                        if (mySetByProxy && myAvailIndex >= 0) {
+                          setByUserId = myTeamObj.member1.setByUserIds[myAvailIndex];
+                        } else if (partnerSetByProxy && partnerAvailIndex >= 0 && myTeamObj.member2) {
+                          setByUserId = myTeamObj.member2.setByUserIds[partnerAvailIndex];
+                        }
+                        
                         const setByTeam = setByUserId ? teamsData.teams.find(t => 
                           t.member1.id === setByUserId || t.member2?.id === setByUserId
                         ) : null;
