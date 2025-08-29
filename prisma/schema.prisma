@@ -46,6 +46,7 @@ id String @id @default(cuid())
 userId String
 startAt DateTime // 30-min slot start (stored as UTC)
 weekStart DateTime // Monday 00:00 UTC for the week
+availability String @default("available") // "available", "not_available", or "none"
 setByUserId String? // ID of user who set this availability (null if set by self)
 user User @relation(fields: [userId], references: [id])
 setByUser User? @relation("SetByUser", fields: [setByUserId], references: [id])
