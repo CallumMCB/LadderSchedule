@@ -111,6 +111,7 @@ export default function TennisLadderScheduler() {
   const [myUnavail, setMyUnavail] = useState<Set<string>>(new Set());
   const [partnerAvail, setPartnerAvail] = useState<Set<string>>(new Set());
   const [partnerAvailSetByMe, setPartnerAvailSetByMe] = useState<Set<string>>(new Set());
+  const [proxyTakeoverSlots, setProxyTakeoverSlots] = useState<Set<string>>(new Set()); // Slots taken over from proxy
   const [proxyAvail, setProxyAvail] = useState<Set<string>>(new Set()); // For when acting on behalf
   const [proxyUnavail, setProxyUnavail] = useState<Set<string>>(new Set()); // Proxy unavailable state
   const [teamProxyStates, setTeamProxyStates] = useState<Record<string, { avail: Set<string>; unavail: Set<string> }>>({});
@@ -145,6 +146,7 @@ export default function TennisLadderScheduler() {
     myUnavail: Set<string>;
     partnerAvail: Set<string>;
     partnerAvailSetByMe: Set<string>;
+    proxyTakeoverSlots?: Set<string>;
   }>>([]);
 
   const teamAvail = useMemo(() => {
@@ -339,7 +341,8 @@ export default function TennisLadderScheduler() {
         myAvail: new Set(myAvail),
         myUnavail: new Set(myUnavail),
         partnerAvail: new Set(partnerAvail),
-        partnerAvailSetByMe: new Set(partnerAvailSetByMe)
+        partnerAvailSetByMe: new Set(partnerAvailSetByMe),
+        proxyTakeoverSlots: new Set(proxyTakeoverSlots)
       }];
       // Keep only last 10 undo states
       return newStack.slice(-10);
@@ -354,6 +357,7 @@ export default function TennisLadderScheduler() {
     setMyUnavail(new Set(lastState.myUnavail));
     setPartnerAvail(new Set(lastState.partnerAvail));
     setPartnerAvailSetByMe(new Set(lastState.partnerAvailSetByMe));
+    setProxyTakeoverSlots(new Set(lastState.proxyTakeoverSlots || []));
     
     // Remove the used state from undo stack
     setUndoStack(prev => prev.slice(0, -1));
@@ -379,6 +383,9 @@ export default function TennisLadderScheduler() {
     
     // Also clear unavailable slots since those are preferences
     setMyUnavail(new Set());
+    
+    // Clear proxy takeover tracking
+    setProxyTakeoverSlots(new Set());
     
     // Clear only partner availability that I set, preserve what they set themselves
     const partnerSlotsISet = new Set(partnerAvailSetByMe); // Capture current state before clearing
@@ -572,31 +579,86 @@ export default function TennisLadderScheduler() {
       const isAvailable = myAvail.has(key);
       const isUnavailable = myUnavail.has(key);
       
-      if (!isAvailable && !isUnavailable) {
-        // Normal → Available
-        setMyAvail(prev => {
-          const newSet = new Set(prev).add(key);
-          // Check for matches if both team members are available
-          if (partnerAvail.has(key)) {
-            setTimeout(() => checkForMatches(key, true, true), 100);
-          }
-          return newSet;
-        });
-      } else if (isAvailable && !isUnavailable) {
-        // Available → Unavailable
-        setMyAvail(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-        setMyUnavail(prev => new Set(prev).add(key));
+      // Check if this slot was set by proxy for my team
+      const myTeamObj = teamsData.teams.find(t => t.id === teamsData.myTeamId);
+      let mySlotSetByProxy = false;
+      let partnerSlotSetByProxy = false;
+      
+      if (myTeamObj && teamsData.currentUserId) {
+        const myAvailIndex = myTeamObj.member1.availability.indexOf(key);
+        const partnerAvailIndex = myTeamObj.member2?.availability.indexOf(key) || -1;
+        
+        mySlotSetByProxy = myAvailIndex >= 0 && myTeamObj.member1.setByUserIds[myAvailIndex] !== myTeamObj.member1.id;
+        partnerSlotSetByProxy = partnerAvailIndex >= 0 && myTeamObj.member2?.setByUserIds[partnerAvailIndex] !== myTeamObj.member2?.id;
+      }
+      
+      // If either slot was set by proxy, allow taking ownership by cycling through states
+      if (mySlotSetByProxy || partnerSlotSetByProxy) {
+        // This slot has proxy data - cycle through states and take ownership
+        if (!isAvailable && !isUnavailable) {
+          // Normal → Available (take ownership)
+          setMyAvail(prev => {
+            const newSet = new Set(prev).add(key);
+            // Check for matches if both team members are available
+            if (partnerAvail.has(key)) {
+              setTimeout(() => checkForMatches(key, true, true), 100);
+            }
+            return newSet;
+          });
+          // Mark this slot as taken over from proxy
+          setProxyTakeoverSlots(prev => new Set(prev).add(key));
+        } else if (isAvailable && !isUnavailable) {
+          // Available → Unavailable (take ownership)
+          setMyAvail(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+          setMyUnavail(prev => new Set(prev).add(key));
+          // Mark this slot as taken over from proxy
+          setProxyTakeoverSlots(prev => new Set(prev).add(key));
+        } else {
+          // Unavailable → Normal (remove ownership)
+          setMyUnavail(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+          // Remove from proxy takeover tracking since we're going back to normal
+          setProxyTakeoverSlots(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }
       } else {
-        // Unavailable → Normal
-        setMyUnavail(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
+        // Normal behavior for slots not set by proxy
+        if (!isAvailable && !isUnavailable) {
+          // Normal → Available
+          setMyAvail(prev => {
+            const newSet = new Set(prev).add(key);
+            // Check for matches if both team members are available
+            if (partnerAvail.has(key)) {
+              setTimeout(() => checkForMatches(key, true, true), 100);
+            }
+            return newSet;
+          });
+        } else if (isAvailable && !isUnavailable) {
+          // Available → Unavailable
+          setMyAvail(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+          setMyUnavail(prev => new Set(prev).add(key));
+        } else {
+          // Unavailable → Normal
+          setMyUnavail(prev => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }
       }
     }
   }
@@ -841,16 +903,42 @@ export default function TennisLadderScheduler() {
         }
       } else {
         // Normal save for my own availability
+        // Separate normal slots from proxy takeover slots
+        const normalAvailSlots = new Set(Array.from(myAvail).filter(slot => !proxyTakeoverSlots.has(slot)));
+        const normalUnavailSlots = new Set(Array.from(myUnavail).filter(slot => !proxyTakeoverSlots.has(slot)));
+        const takeoverAvailSlots = new Set(Array.from(myAvail).filter(slot => proxyTakeoverSlots.has(slot)));
+        const takeoverUnavailSlots = new Set(Array.from(myUnavail).filter(slot => proxyTakeoverSlots.has(slot)));
+
         const promises = [
           fetch('/api/availability', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               weekStartISO: weekStart.toISOString(),
-              slots: Array.from(myAvail),
+              slots: Array.from(normalAvailSlots),
             }),
           })
         ];
+
+        // Save proxy takeover slots through proxy API to update setByUserId
+        if (takeoverAvailSlots.size > 0 || takeoverUnavailSlots.size > 0) {
+          const myTeam = teamsData.teams.find(t => t.id === teamsData.myTeamId);
+          const myUserId = teamsData.currentUserId;
+          if (myTeam && myUserId) {
+            promises.push(
+              fetch('/api/availability/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  weekStartISO: weekStart.toISOString(),
+                  availableSlots: Array.from(takeoverAvailSlots),
+                  unavailableSlots: Array.from(takeoverUnavailSlots),
+                  targetUserId: myUserId,
+                }),
+              })
+            );
+          }
+        }
 
         // Also save partner availability that I set
         if (partnerAvailSetByMe.size > 0) {
@@ -879,6 +967,8 @@ export default function TennisLadderScheduler() {
           setSaveMsg("Saved successfully!");
           // Clear any team proxy states since we've saved our own data
           setTeamProxyStates({});
+          // Clear proxy takeover tracking since changes are now saved
+          setProxyTakeoverSlots(new Set());
           await loadAllMembersAvailability();
           setTimeout(() => setSaveMsg(""), 2000);
         } else {
