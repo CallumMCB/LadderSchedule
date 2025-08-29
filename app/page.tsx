@@ -141,7 +141,21 @@ export default function TennisLadderScheduler() {
   // Time range display state
   const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
   const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
-  const [showHiddenTeams, setShowHiddenTeams] = useState(false); // Show teams with confirmed matches
+  const [showHiddenTeams, setShowHiddenTeams] = useState(false);
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    type: string;
+    timestamp: string;
+    user?: string;
+    team1?: string;
+    team2?: string;
+    action?: string;
+    slot?: string;
+    confirmed?: boolean;
+    completed?: boolean;
+    score?: string;
+    setBy?: string;
+    isProxy?: boolean;
+  }>>([]); // Show teams with confirmed matches
   
   // Undo state
   const [undoStack, setUndoStack] = useState<Array<{
@@ -311,6 +325,20 @@ export default function TennisLadderScheduler() {
       }
     } catch (error) {
       console.error("Failed to load personal unavailability:", error);
+    }
+  };
+
+  // Load recent activities
+  const loadRecentActivities = async () => {
+    try {
+      const ladderId = ladderInfo?.currentLadder?.id;
+      const response = await fetch(`/api/activity${ladderId ? `?ladderId=${ladderId}` : ''}`);
+      if (response.ok) {
+        const data = await response.json();
+        setRecentActivities(data.activities || []);
+      }
+    } catch (error) {
+      console.error("Failed to load activities:", error);
     }
   };
 
@@ -1127,6 +1155,9 @@ export default function TennisLadderScheduler() {
       console.log('Loaded availability for', availabilityMap.size, 'weeks');
       setAllAvailabilities(availabilityMap);
       
+      // Load recent activities
+      await loadRecentActivities();
+      
     } catch (error) {
       console.error("Failed to load all data:", error);
     }
@@ -1201,6 +1232,7 @@ export default function TennisLadderScheduler() {
 
       // Reload all data to get updated matches and availability
       await loadAllData();
+      await loadRecentActivities();
     } catch (error) {
       console.error("Failed to load availability:", error);
     }
@@ -1481,21 +1513,57 @@ export default function TennisLadderScheduler() {
       />
 
       <details>
-        <summary className="cursor-pointer text-sm text-muted-foreground">Recent Changes</summary>
-        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-1">
-          <div className="font-medium mb-2">Git Commit History:</div>
-          <div className="space-y-1 text-muted-foreground font-mono">
-            <div>• <span className="text-green-600">9b1174b</span> Fix TypeScript compilation error</div>
-            <div>• <span className="text-green-600">01d0c49</span> Fix availability display and solo player handling</div>
-            <div>• <span className="text-green-600">8c2efce</span> Fix proxy cycling and bidirectional partner unlinking</div>
-            <div>• <span className="text-green-600">fd76000</span> Revert to simple stripe logic to fix compilation errors</div>
-            <div>• <span className="text-green-600">cd654d2</span> Fix stripe color logic scope issues</div>
-            <div>• <span className="text-green-600">30a4bb2</span> Simplify proxy detection logic to fix scope issue</div>
-            <div>• <span className="text-green-600">d39683a</span> Rename myAvailSetByProxy to myProxySlots</div>
-            <div>• <span className="text-green-600">4f97b22</span> Fix variable name encoding issue in proxy detection</div>
-            <div>• <span className="text-green-600">224d05b</span> Fix line merge issue in stripe logic</div>
-            <div>• <span className="text-green-600">00acf57</span> Implement complete three-state availability system</div>
-          </div>
+        <summary className="cursor-pointer text-sm text-muted-foreground">Recent Activity</summary>
+        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-1 max-h-64 overflow-y-auto">
+          <div className="font-medium mb-2">Recent Calendar Changes:</div>
+          {recentActivities.length === 0 ? (
+            <div className="text-muted-foreground italic">No recent activity</div>
+          ) : (
+            <div className="space-y-1">
+              {recentActivities.map((activity, index) => (
+                <div key={index} className="flex justify-between items-start">
+                  <div className="flex-1">
+                    {activity.type === 'match' ? (
+                      <span>
+                        <span className="font-medium">{activity.team1}</span> vs{" "}
+                        <span className="font-medium">{activity.team2}</span>
+                        {activity.completed ? (
+                          <span className="text-green-600"> - Final: {activity.score}</span>
+                        ) : activity.confirmed ? (
+                          <span className="text-blue-600"> - Confirmed</span>
+                        ) : (
+                          <span className="text-yellow-600"> - Pending</span>
+                        )}
+                        <div className="text-muted-foreground">
+                          {new Date(activity.slot!).toLocaleDateString()} at{" "}
+                          {new Date(activity.slot!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </span>
+                    ) : (
+                      <span>
+                        {activity.setBy && activity.setBy !== activity.user ? (
+                          <span><span className="font-medium">{activity.setBy}</span> set{" "}
+                          <span className="font-medium">{activity.user}</span> as {activity.action}</span>
+                        ) : (
+                          <span><span className="font-medium">{activity.user}</span> marked as {activity.action}</span>
+                        )}
+                        <div className="text-muted-foreground">
+                          {new Date(activity.slot!).toLocaleDateString()} at{" "}
+                          {new Date(activity.slot!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-muted-foreground ml-2">
+                    {new Date(activity.timestamp).toLocaleDateString() === new Date().toLocaleDateString() 
+                      ? new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : new Date(activity.timestamp).toLocaleDateString()
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </details>
 
