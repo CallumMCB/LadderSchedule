@@ -26,19 +26,21 @@ const me = await prisma.user.findUnique({ where: { email: session.user.email } }
 if (!me) return NextResponse.json({ error: "user not found" }, { status: 404 });
 
 const [mySlots, partner] = await Promise.all([
-prisma.availability.findMany({ where: { userId: me.id, weekStart }, select: { startAt: true } }),
+prisma.availability.findMany({ where: { userId: me.id, weekStart }, select: { startAt: true, setByUserId: true } }),
 me.partnerId ? prisma.user.findUnique({ where: { id: me.partnerId } }) : Promise.resolve(null),
 ]);
 
-let partnerSlots: Date[] = [];
+let partnerSlots: Array<{ startAt: Date; setByUserId: string | null }> = [];
 if (partner) {
-const rows = await prisma.availability.findMany({ where: { userId: partner.id, weekStart }, select: { startAt: true } });
-partnerSlots = rows.map(r => r.startAt);
+const rows = await prisma.availability.findMany({ where: { userId: partner.id, weekStart }, select: { startAt: true, setByUserId: true } });
+partnerSlots = rows;
 }
 
 return NextResponse.json({
 mySlots: mySlots.map(r => r.startAt.toISOString()),
-partnerSlots: partnerSlots.map(d => d.toISOString()),
+partnerSlots: partnerSlots.map(d => d.startAt.toISOString()),
+mySlotsSetBy: mySlots.map(r => r.setByUserId),
+partnerSlotsSetBy: partnerSlots.map(d => d.setByUserId),
 partnerEmail: partner?.email ?? null,
 });
 }
