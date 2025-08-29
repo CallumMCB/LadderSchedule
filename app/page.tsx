@@ -1718,8 +1718,31 @@ function AvailabilityGrid({
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  // Get other teams
-  const otherTeams = teamsData.teams.filter(t => t.id !== teamsData.myTeamId);
+  // Get other teams, excluding those with confirmed matches
+  const otherTeams = teamsData.teams.filter(team => {
+    if (team.id === teamsData.myTeamId) return false; // Skip my team
+    
+    // Check if we already have a confirmed match with this team
+    const myTeamId = teamsData.myTeamId;
+    if (myTeamId && teamsData.matches) {
+      const [team1Id, team2Id] = [myTeamId, team.id].sort();
+      const existingMatch = teamsData.matches.find(match => 
+        match.team1Id === team1Id && match.team2Id === team2Id && !match.completed
+      );
+      
+      if (existingMatch) {
+        console.log('Excluding team from calendar view due to existing match:', {
+          teamId: team.id,
+          myTeamId: myTeamId,
+          matchId: existingMatch.id,
+          matchTime: existingMatch.startAt
+        });
+        return false; // Already have a match with this team
+      }
+    }
+    
+    return true;
+  });
 
   function TimeSlotVisual({ slotKey, rowLabel }: { slotKey: string; rowLabel: string }) {
     // Check if this is a past time
