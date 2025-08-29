@@ -119,6 +119,11 @@ export default function TennisLadderScheduler() {
     opponent?: { id: string; name: string; color: string };
     opponents?: Array<{ id: string; name: string; color: string }>;
   } | null>(null);
+  const [showRescheduleConfirmation, setShowRescheduleConfirmation] = useState<{
+    existingMatch: { id: string; startAt: string; team1Id: string; team2Id: string };
+    newTime: string;
+    opponentName: string;
+  } | null>(null);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const [actingAsTeam, setActingAsTeam] = useState<string | null>(null);
   const [actingAsPlayer, setActingAsPlayer] = useState<string | null>(null);
@@ -1377,6 +1382,51 @@ export default function TennisLadderScheduler() {
         </div>
       )}
 
+      {/* Reschedule Confirmation Popup */}
+      {showRescheduleConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="max-w-md w-full mx-4">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Reschedule Match?</h3>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  You already have a match scheduled with <strong>{showRescheduleConfirmation.opponentName}</strong>:
+                </p>
+                <div className="bg-gray-100 p-3 rounded mb-3">
+                  <div className="text-sm">
+                    <strong>Current match:</strong><br/>
+                    {new Date(showRescheduleConfirmation.existingMatch.startAt).toLocaleDateString()} at{' '}
+                    {new Date(showRescheduleConfirmation.existingMatch.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                  </div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded">
+                  <div className="text-sm">
+                    <strong>Reschedule to:</strong><br/>
+                    {new Date(showRescheduleConfirmation.newTime).toLocaleDateString()} at{' '}
+                    {new Date(showRescheduleConfirmation.newTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">
+                Would you like to reschedule your existing match to this new time?
+              </p>
+              <div className="flex gap-3">
+                <Button onClick={rescheduleMatch} className="flex-1">
+                  Yes, Reschedule
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowRescheduleConfirmation(null)} 
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Sticky Save Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="flex flex-col items-end gap-2">
@@ -1455,9 +1505,66 @@ export default function TennisLadderScheduler() {
           updateCurrentWeekData();
         }
         setTimeout(() => setSaveMsg(""), 3000);
+      } else if (response.status === 409) {
+        // Conflict - existing match found, show reschedule popup
+        const conflictData = await response.json();
+        const currentOpponentTeamId = opponentTeamId;
+        const opponentTeam = teamsData.teams.find(t => t.id === currentOpponentTeamId);
+        const opponentName = opponentTeam ? 
+          `${opponentTeam.member1.name || opponentTeam.member1.email}${
+            opponentTeam.member2 && opponentTeam.member2.id !== opponentTeam.member1.id 
+              ? ` & ${opponentTeam.member2.name || opponentTeam.member2.email}` 
+              : ''
+          }` : 'Unknown Team';
+        
+        setShowRescheduleConfirmation({
+          existingMatch: conflictData.existingMatch,
+          newTime: conflictData.requestedTime,
+          opponentName
+        });
+        setShowMatchConfirmation(null);
       } else {
         const error = await response.json();
         setSaveMsg(error.error || "Failed to confirm match");
+        setTimeout(() => setSaveMsg(""), 3000);
+      }
+    } catch (error) {
+      setSaveMsg("Network error");
+      setTimeout(() => setSaveMsg(""), 3000);
+    }
+  }
+
+  async function rescheduleMatch() {
+    if (!showRescheduleConfirmation) return;
+    
+    try {
+      const response = await fetch('/api/matches/reschedule', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId: showRescheduleConfirmation.existingMatch.id,
+          newTime: showRescheduleConfirmation.newTime
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Match reschedule response:', data);
+        setSaveMsg("Match rescheduled successfully!");
+        setShowRescheduleConfirmation(null);
+        // Reload all matches to show the rescheduled match
+        const ladderId = ladderInfo?.currentLadder?.id;
+        const matchesResponse = await fetch(`/api/matches/all${ladderId ? `?ladderId=${ladderId}` : ''}`);
+        if (matchesResponse.ok) {
+          const matchesData = await matchesResponse.json();
+          setAllMatches(matchesData.matches);
+          // Update current week data with new matches
+          updateCurrentWeekData();
+        }
+        setTimeout(() => setSaveMsg(""), 3000);
+      } else {
+        const error = await response.json();
+        setSaveMsg(error.error || "Failed to reschedule match");
         setTimeout(() => setSaveMsg(""), 3000);
       }
     } catch (error) {
@@ -1671,8 +1778,8 @@ function AvailabilityGrid({
           />
           {/* Match label */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs text-white bg-black bg-opacity-60 px-1 rounded font-semibold">
-              MATCH{canCancel ? ' (click to cancel)' : ''}
+            <span className="text-xs text-white bg-red-600 bg-opacity-90 px-1 rounded font-semibold">
+              MATCH
             </span>
           </div>
         </div>

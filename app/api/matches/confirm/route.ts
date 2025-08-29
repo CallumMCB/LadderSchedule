@@ -43,8 +43,15 @@ export async function POST(req: NextRequest) {
     
     if (existingMatch) {
       return NextResponse.json({ 
-        error: "You can only have one match with the same team until the ladder is reset" 
-      }, { status: 400 });
+        existingMatch: {
+          id: existingMatch.id,
+          startAt: existingMatch.startAt.toISOString(),
+          team1Id: existingMatch.team1Id,
+          team2Id: existingMatch.team2Id
+        },
+        requestedTime: slotKey,
+        message: "A match already exists with this team. Would you like to reschedule?"
+      }, { status: 409 }); // 409 = Conflict
     }
     
     // Create the match record
