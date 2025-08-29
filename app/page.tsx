@@ -906,196 +906,149 @@ export default function TennisLadderScheduler() {
   async function saveAvailability() {
     setSaving(true);
     try {
-      if (actingAsTeam && actingAsPlayer) {
-        // Acting as specific player in another team
-        const response = await fetch('/api/availability/proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            weekStartISO: weekStart.toISOString(),
-            availableSlots: Array.from(proxyAvail),
-            unavailableSlots: Array.from(proxyUnavail),
-            targetUserId: actingAsPlayer,
-          }),
+      // Collect all teams with changes to save
+      const teamsToSave = new Map<string, { avail: Set<string>; unavail: Set<string> }>();
+      
+      // Add currently active team changes
+      if (actingAsTeam && (proxyAvail.size > 0 || proxyUnavail.size > 0)) {
+        teamsToSave.set(actingAsTeam, {
+          avail: new Set(proxyAvail),
+          unavail: new Set(proxyUnavail)
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSaveMsg(`Saved for ${data.message?.split(' ').slice(-1) || 'player'}!`);
-          // Update saved state in teamProxyStates
-          if (actingAsTeam) {
-            setTeamProxyStates(prev => ({
-              ...prev,
-              [actingAsTeam]: {
-                avail: new Set(),
-                unavail: new Set()
-              }
-            }));
-          }
-          // Clear proxy state after successful save
-          setProxyAvail(new Set());
-          setProxyUnavail(new Set());
-          // Reload all data to get updated matches and availability
-          await loadAllData();
-          setTimeout(() => setSaveMsg(""), 2000);
-        } else {
-          const error = await response.json();
-          setSaveMsg(error.error || "Failed to save");
-          setTimeout(() => setSaveMsg(""), 3000);
+      }
+      
+      // Add any saved team proxy states that haven't been committed
+      Object.entries(teamProxyStates).forEach(([teamId, states]) => {
+        if (states.avail.size > 0 || states.unavail.size > 0) {
+          teamsToSave.set(teamId, {
+            avail: new Set(states.avail),
+            unavail: new Set(states.unavail)
+          });
         }
-      } else if (actingAsTeam && !actingAsPlayer) {
-        // Acting for both players in another team
-        console.log('Saving for both players, proxy state:', { 
-          proxyAvail: Array.from(proxyAvail), 
-          proxyUnavail: Array.from(proxyUnavail) 
-        });
-        const team = teamsData.teams.find(t => t.id === actingAsTeam);
-        if (team) {
-          const promises = [
+      });
+      
+      if (teamsToSave.size === 0 && (myAvail.size > 0 || myUnavail.size > 0 || partnerAvail.size > 0)) {
+        // Save own availability if no proxy changes
+        await saveOwnAvailability();
+        return;
+      }
+      
+      // Save changes for all edited teams
+      const savePromises: Promise<Response>[] = [];
+      const teamNames: string[] = [];
+      
+      for (const [teamId, changes] of teamsToSave.entries()) {
+        const team = teamsData.teams.find(t => t.id === teamId);
+        if (!team) continue;
+        
+        teamNames.push(team.member1.name || team.member1.email);
+        
+        // Save for member1
+        savePromises.push(
+          fetch('/api/availability/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              weekStartISO: weekStart.toISOString(),
+              availableSlots: Array.from(changes.avail),
+              unavailableSlots: Array.from(changes.unavail),
+              targetUserId: team.member1.id,
+            }),
+          })
+        );
+        
+        // Save for member2 if different person
+        if (team.member2 && team.member2.id !== team.member1.id) {
+          savePromises.push(
             fetch('/api/availability/proxy', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 weekStartISO: weekStart.toISOString(),
-                availableSlots: Array.from(proxyAvail),
-                unavailableSlots: Array.from(proxyUnavail),
-                targetUserId: team.member1.id,
+                availableSlots: Array.from(changes.avail),
+                unavailableSlots: Array.from(changes.unavail),
+                targetUserId: team.member2.id,
               }),
             })
-          ];
-          
-          if (team.member2 && team.member2.id !== team.member1.id) {
-            promises.push(
-              fetch('/api/availability/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  weekStartISO: weekStart.toISOString(),
-                  availableSlots: Array.from(proxyAvail),
-                  unavailableSlots: Array.from(proxyUnavail),
-                  targetUserId: team.member2.id,
-                }),
-              })
-            );
-          }
-
-          const responses = await Promise.all(promises);
-          const allSuccess = responses.every(r => r.ok);
-          
-          if (allSuccess) {
-            setSaveMsg("Saved for both team members!");
-            // Update saved state in teamProxyStates but keep current proxy state
-            if (actingAsTeam) {
-              setTeamProxyStates(prev => ({
-                ...prev,
-                [actingAsTeam]: {
-                  avail: new Set(),
-                  unavail: new Set()
-                }
-              }));
-            }
-            // Clear current proxy state after successful save
-            setProxyAvail(new Set());
-            setProxyUnavail(new Set());
-            // Reload all data to get updated matches and availability
-            await loadAllData();
-            setTimeout(() => setSaveMsg(""), 2000);
-          } else {
-            setSaveMsg("Some saves failed");
-            setTimeout(() => setSaveMsg(""), 3000);
-          }
-        }
-      } else {
-        // Normal save for my own availability
-        // Separate normal slots from proxy takeover slots
-        const normalAvailSlots = new Set(Array.from(myAvail).filter(slot => !proxyTakeoverSlots.has(slot)));
-        const normalUnavailSlots = new Set(Array.from(myUnavail).filter(slot => !proxyTakeoverSlots.has(slot)));
-        const takeoverAvailSlots = new Set(Array.from(myAvail).filter(slot => proxyTakeoverSlots.has(slot)));
-        const takeoverUnavailSlots = new Set(Array.from(myUnavail).filter(slot => proxyTakeoverSlots.has(slot)));
-
-        const promises = [
-          fetch('/api/availability', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              weekStartISO: weekStart.toISOString(),
-              slots: Array.from(normalAvailSlots),
-            }),
-          })
-        ];
-
-        // Save proxy takeover slots through takeover API to update setByUserId only for modified slots
-        // Separate takeover slots by state: available, unavailable, and none (to be deleted)
-        const takeoverNoneSlots = new Set<string>();
-        
-        // Check which takeover slots are in "none" state (neither available nor unavailable)
-        proxyTakeoverSlots.forEach(slot => {
-          if (!takeoverAvailSlots.has(slot) && !takeoverUnavailSlots.has(slot)) {
-            takeoverNoneSlots.add(slot);
-          }
-        });
-        
-        if (takeoverAvailSlots.size > 0 || takeoverUnavailSlots.size > 0 || takeoverNoneSlots.size > 0) {
-          const myTeam = teamsData.teams.find(t => t.id === teamsData.myTeamId);
-          const myUserId = teamsData.currentUserId;
-          if (myTeam && myUserId) {
-            promises.push(
-              fetch('/api/availability/takeover', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  weekStartISO: weekStart.toISOString(),
-                  availableSlots: Array.from(takeoverAvailSlots),
-                  unavailableSlots: Array.from(takeoverUnavailSlots),
-                  noneSlots: Array.from(takeoverNoneSlots),
-                  targetUserId: myUserId,
-                }),
-              })
-            );
-          }
-        }
-
-        // Also save partner availability that I set
-        if (partnerAvailSetByMe.size > 0) {
-          const myTeam = teamsData.teams.find(t => t.id === teamsData.myTeamId);
-          const partnerId = myTeam?.member2?.id !== myTeam?.member1?.id ? myTeam?.member2?.id : null;
-          if (partnerId) {
-            promises.push(
-              fetch('/api/availability/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  weekStartISO: weekStart.toISOString(),
-                  availableSlots: Array.from(partnerAvailSetByMe),
-                  unavailableSlots: [], // Partner unavailable slots would be handled separately if needed
-                  targetUserId: partnerId,
-                }),
-              })
-            );
-          }
-        }
-
-        const responses = await Promise.all(promises);
-        const allSuccess = responses.every(r => r.ok);
-
-        if (allSuccess) {
-          setSaveMsg("Saved successfully!");
-          // Clear any team proxy states since we've saved our own data
-          setTeamProxyStates({});
-          // Clear proxy takeover tracking since changes are now saved
-          setProxyTakeoverSlots(new Set());
-          await loadAllMembersAvailability();
-          setTimeout(() => setSaveMsg(""), 2000);
-        } else {
-          setSaveMsg("Some saves failed");
-          setTimeout(() => setSaveMsg(""), 3000);
+          );
         }
       }
+      
+      const responses = await Promise.all(savePromises);
+      const allSuccess = responses.every(r => r.ok);
+      
+      if (allSuccess) {
+        setSaveMsg(`Saved changes for ${teamNames.length} team${teamNames.length !== 1 ? 's' : ''}!`);
+        // Clear all proxy states
+        setTeamProxyStates({});
+        setProxyAvail(new Set());
+        setProxyUnavail(new Set());
+        await loadAllData();
+        setTimeout(() => setSaveMsg(""), 2000);
+      } else {
+        setSaveMsg("Some saves failed");
+        setTimeout(() => setSaveMsg(""), 3000);
+      }
+      
+      // If no teams to save via proxy, save own availability
+      if (teamsToSave.size === 0) {
+        await saveOwnAvailability();
+      }
+      
     } catch (error) {
       setSaveMsg("Network error");
       setTimeout(() => setSaveMsg(""), 3000);
     } finally {
       setSaving(false);
+    }
+  }
+  
+  async function saveOwnAvailability() {
+    // Save own availability
+    const normalAvailSlots = Array.from(myAvail).filter(slot => !proxyTakeoverSlots.has(slot));
+    const takeoverSlots = Array.from(proxyTakeoverSlots);
+    
+    const promises = [
+      fetch('/api/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekStartISO: weekStart.toISOString(),
+          slots: normalAvailSlots,
+        }),
+      })
+    ];
+
+    if (takeoverSlots.length > 0) {
+      const myUserId = teamsData.currentUserId;
+      if (myUserId) {
+        promises.push(
+          fetch('/api/availability/takeover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              weekStartISO: weekStart.toISOString(),
+              availableSlots: Array.from(myAvail).filter(slot => proxyTakeoverSlots.has(slot)),
+              unavailableSlots: Array.from(myUnavail).filter(slot => proxyTakeoverSlots.has(slot)),
+              noneSlots: takeoverSlots.filter(slot => !myAvail.has(slot) && !myUnavail.has(slot)),
+              targetUserId: myUserId,
+            }),
+          })
+        );
+      }
+    }
+
+    const responses = await Promise.all(promises);
+    const allSuccess = responses.every(r => r.ok);
+
+    if (allSuccess) {
+      setSaveMsg("Saved successfully!");
+      setProxyTakeoverSlots(new Set());
+      await loadAllMembersAvailability();
+      setTimeout(() => setSaveMsg(""), 2000);
+    } else {
+      setSaveMsg("Some saves failed");
+      setTimeout(() => setSaveMsg(""), 3000);
     }
   }
 
@@ -2296,8 +2249,14 @@ function AvailabilityGrid({
                 const member1ProxyAvail = proxyAvail.has(slotKey);
                 const member1ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                member1Available = (member1ExistingAvail || member1ProxyAvail) && !member1ProxyUnavail;
-                member1Unavailable = member1ProxyUnavail;
+                // If proxy state exists, use it completely; otherwise use existing
+                if (member1ProxyAvail || member1ProxyUnavail) {
+                  member1Available = member1ProxyAvail;
+                  member1Unavailable = member1ProxyUnavail;
+                } else {
+                  member1Available = member1ExistingAvail;
+                  member1Unavailable = false;
+                }
                 member2Available = team.member2?.availability.includes(slotKey) || false;
               } else if (actingAsPlayer === team.member2?.id) {
                 // Acting as member 2 only - show existing OR proxy state
@@ -2306,8 +2265,14 @@ function AvailabilityGrid({
                 const member2ProxyAvail = proxyAvail.has(slotKey);
                 const member2ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                member2Available = (member2ExistingAvail || member2ProxyAvail) && !member2ProxyUnavail;
-                member2Unavailable = member2ProxyUnavail;
+                // If proxy state exists, use it completely; otherwise use existing
+                if (member2ProxyAvail || member2ProxyUnavail) {
+                  member2Available = member2ProxyAvail;
+                  member2Unavailable = member2ProxyUnavail;
+                } else {
+                  member2Available = member2ExistingAvail;
+                  member2Unavailable = false;
+                }
               } else {
                 // Acting for both members - show existing OR proxy state for each
                 const member1ExistingAvail = team.member1.availability.includes(slotKey);
@@ -2315,10 +2280,18 @@ function AvailabilityGrid({
                 const proxyAvailForSlot = proxyAvail.has(slotKey);
                 const proxyUnavailForSlot = proxyUnavail.has(slotKey);
                 
-                member1Available = (member1ExistingAvail || proxyAvailForSlot) && !proxyUnavailForSlot;
-                member1Unavailable = proxyUnavailForSlot;
-                member2Available = (member2ExistingAvail || proxyAvailForSlot) && !proxyUnavailForSlot;
-                member2Unavailable = proxyUnavailForSlot;
+                // If proxy state exists, use it completely; otherwise use existing
+                if (proxyAvailForSlot || proxyUnavailForSlot) {
+                  member1Available = proxyAvailForSlot;
+                  member1Unavailable = proxyUnavailForSlot;
+                  member2Available = proxyAvailForSlot;
+                  member2Unavailable = proxyUnavailForSlot;
+                } else {
+                  member1Available = member1ExistingAvail;
+                  member1Unavailable = false;
+                  member2Available = member2ExistingAvail;
+                  member2Unavailable = false;
+                }
               }
             } else {
               member1Available = team.member1.availability.includes(slotKey);
@@ -2357,7 +2330,8 @@ function AvailabilityGrid({
                 <div 
                   className="flex-1 opacity-70 relative"
                   style={{ 
-                    backgroundColor: member1Available ? team.color : member1Unavailable ? '#000000' : 'transparent'
+                    backgroundColor: member1Available ? team.color : member1Unavailable ? '#000000' : 
+                      (actingAsTeam === team.id && !member1Available && !member1Unavailable) ? '#FFFFFF' : 'transparent'
                   }}
                 >
                   {/* Add stripes if set by someone else or if we're making proxy changes */}
@@ -2384,7 +2358,8 @@ function AvailabilityGrid({
                 <div 
                   className="flex-1 opacity-70 relative"
                   style={{ 
-                    backgroundColor: member2Available ? team.color : member2Unavailable ? '#000000' : 'transparent'
+                    backgroundColor: member2Available ? team.color : member2Unavailable ? '#000000' : 
+                      (actingAsTeam === team.id && !member2Available && !member2Unavailable) ? '#FFFFFF' : 'transparent'
                   }}
                 >
                   {/* Add stripes if set by someone else or if we're making proxy changes */}
