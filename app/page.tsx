@@ -1489,6 +1489,14 @@ export default function TennisLadderScheduler() {
             Undo ({undoStack.length})
           </Button>
           <Button 
+            onClick={loadAllData} 
+            variant="outline"
+            size="sm"
+            className="mb-2"
+          >
+            🔄 Refresh Data
+          </Button>
+          <Button 
             onClick={saveAvailability} 
             disabled={saving || !!isAfterEndDate}
             className="shadow-lg hover:shadow-xl transition-shadow"

@@ -46,8 +46,8 @@ export default function ScoringPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [showScheduleModal, setShowScheduleModal] = useState<{team1Id: string; team2Id: string} | null>(null);
   const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleHour, setScheduleHour] = useState("");
-  const [scheduleMinute, setScheduleMinute] = useState("");
+  const [scheduleHour, setScheduleHour] = useState("18"); // Default to 6pm (18 in 24-hour format)
+  const [scheduleMinute, setScheduleMinute] = useState("00"); // Default to 00 minutes
   const [selectedLadderId, setSelectedLadderId] = useState<string>("");
   const [ladderInfo, setLadderInfo] = useState<{
     currentLadder?: { id: string; name: string; number: number; endDate: string };
@@ -249,10 +249,10 @@ export default function ScoringPage() {
       return;
     }
 
-    // Validate hour range
+    // Validate hour range (6am to 9pm = 6 to 21 in 24-hour format)
     const hour = parseInt(scheduleHour);
-    if (hour < 6 || hour > 9) {
-      setSaveMsg("Hour must be between 6 and 9");
+    if (hour < 6 || hour > 21) {
+      setSaveMsg("Hour must be between 6am and 9pm");
       setTimeout(() => setSaveMsg(""), 2000);
       return;
     }
@@ -810,6 +810,9 @@ export default function ScoringPage() {
           <Button onClick={saveScores} disabled={saving} size="lg">
             {saving ? "Saving..." : "Save Scores"}
           </Button>
+          <Button onClick={loadTeamsAndMatches} variant="outline" size="lg">
+            🔄 Refresh Data
+          </Button>
         </div>
       </div>
 
@@ -856,16 +859,16 @@ export default function ScoringPage() {
                   <input
                     type="number"
                     min="6"
-                    max="9"
+                    max="21"
                     value={scheduleHour}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === "" || (parseInt(value) >= 6 && parseInt(value) <= 9)) {
+                      if (value === "" || (parseInt(value) >= 6 && parseInt(value) <= 21)) {
                         setScheduleHour(value);
                       }
                     }}
                     className="w-full p-1.5 text-sm border rounded text-center"
-                    placeholder="6-9"
+                    placeholder="6-21"
                   />
                 </div>
                 <div>
