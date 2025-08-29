@@ -36,6 +36,8 @@ name String // e.g., "Ladder 1", "Ladder A", etc.
 number Int @unique // Ladder number for ordering
 endDate DateTime // When this ladder season ends
 isActive Boolean @default(true) // Whether this ladder is currently active
+winnerBy String @default("matches") // "matches" or "games" - how winner is determined
+matchFormat Json @default("{\"sets\":3,\"gamesPerSet\":6,\"winnerBy\":\"sets\"}") // Match format settings
 users User[]
 matches Match[]
 createdAt DateTime @default(now())
