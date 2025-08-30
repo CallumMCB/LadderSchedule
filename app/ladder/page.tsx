@@ -382,7 +382,7 @@ export default function WholeLadderPage() {
                                 }
 
                                 const match = getMatchBetweenTeams(rowTeam.id, colTeam.id, ladder.matches);
-                                const isRowTeamFirst = match && match.team1Id === rowTeam.id;
+                                const isRowTeamFirst = match ? match.team1Id === rowTeam.id : false;
                                 
                                 if (!match) {
                                   return (
