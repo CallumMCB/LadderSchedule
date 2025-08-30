@@ -837,19 +837,6 @@ export default function ScoringPage() {
                                   </tbody>
                                 </table>
                                 
-                                {/* Individual Save Score Button */}
-                                {unsavedMatches.has(match.id) && (
-                                  <div className="mt-2 flex justify-center">
-                                    <Button
-                                      onClick={() => saveIndividualScore(match.id)}
-                                      disabled={savingMatch === match.id}
-                                      size="sm"
-                                      className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
-                                    >
-                                      {savingMatch === match.id ? "Saving..." : "Save Score"}
-                                    </Button>
-                                  </div>
-                                )}
                               </div>
                             </td>
                           );
@@ -887,6 +874,47 @@ export default function ScoringPage() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Individual Save Score Buttons */}
+              <div className="grid gap-2 mt-4">
+                {Array.from(unsavedMatches).map(matchId => {
+                  const match = teamsData.matches.find(m => m.id === matchId);
+                  if (!match) return null;
+                  
+                  const team1 = teams.find(t => t.id === match.team1Id);
+                  const team2 = teams.find(t => t.id === match.team2Id);
+                  
+                  return (
+                    <div key={matchId} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-3 h-3 rounded"
+                          style={{ backgroundColor: team1?.color }}
+                        />
+                        <span className="text-sm font-medium">
+                          {team1 ? getTeamDisplayName(team1) : 'Unknown'}
+                        </span>
+                        <span className="text-gray-400">vs</span>
+                        <div 
+                          className="w-3 h-3 rounded"
+                          style={{ backgroundColor: team2?.color }}
+                        />
+                        <span className="text-sm font-medium">
+                          {team2 ? getTeamDisplayName(team2) : 'Unknown'}
+                        </span>
+                      </div>
+                      <Button
+                        onClick={() => saveIndividualScore(matchId)}
+                        disabled={savingMatch === matchId}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                      >
+                        {savingMatch === matchId ? "Saving..." : "Save Score"}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Match Summary */}
@@ -1127,20 +1155,26 @@ export default function ScoringPage() {
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-center">
-        <div className="flex items-center gap-4">
-          {saveMsg && (
-            <span className="text-sm text-muted-foreground">{saveMsg}</span>
-          )}
-          <Button onClick={saveScores} disabled={saving} size="lg">
-            {saving ? "Saving..." : "Save Scores"}
-          </Button>
-          <Button onClick={loadTeamsAndMatches} variant="outline" size="lg">
-            🔄 Refresh Data
-          </Button>
-        </div>
+      {/* Fixed Refresh Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <Button 
+          onClick={loadTeamsAndMatches} 
+          variant="outline" 
+          size="lg"
+          className="shadow-lg border-2"
+        >
+          🔄 Refresh Data
+        </Button>
       </div>
+
+      {/* Save Message */}
+      {saveMsg && (
+        <div className="fixed bottom-20 right-6 z-40">
+          <div className="bg-white border rounded-lg shadow-lg px-4 py-2 text-sm">
+            {saveMsg}
+          </div>
+        </div>
+      )}
 
       {/* Schedule Match Popup */}
       {showScheduleModal && (
