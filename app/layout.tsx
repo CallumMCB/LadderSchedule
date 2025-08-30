@@ -16,12 +16,20 @@ return (
 <div className="max-w-6xl mx-auto p-4">
 <header className="flex items-center justify-between mb-4">
 <h1 className="text-xl font-bold">Doubles Tennis Ladder</h1>
+
+{/* Center Navigation */}
+{session && (
+<div className="absolute left-1/2 transform -translate-x-1/2 flex gap-6">
+<Link href="/" className="text-sm underline hover:text-blue-600 font-medium">Calendar</Link>
+<Link href="/scoring" className="text-sm underline hover:text-blue-600 font-medium">Scoring</Link>
+<Link href="/opponents" className="text-sm underline hover:text-blue-600 font-medium">Opponents</Link>
+<Link href="/ladder" className="text-sm underline hover:text-blue-600 font-medium">Whole Ladder</Link>
+</div>
+)}
+
 <div className="flex gap-4">
 {session ? (
 <>
-<Link href="/" className="text-sm underline">Calendar</Link>
-<Link href="/scoring" className="text-sm underline">Scoring</Link>
-<Link href="/opponents" className="text-sm underline">Opponents</Link>
 <Link href="/help" className="text-sm underline">Help</Link>
 <Link href="/profile" className="text-sm underline">Profile</Link>
 <a href="/api/auth/signout" className="text-sm underline">Log Out</a>
