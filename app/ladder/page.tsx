@@ -38,6 +38,7 @@ export default function WholeLadderPage() {
   const { data: session } = useSession();
   const [ladders, setLadders] = useState<LadderData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'summary' | 'scores'>('summary');
 
   useEffect(() => {
     if (session) {
@@ -102,17 +103,43 @@ export default function WholeLadderPage() {
 
     playedMatches.forEach(match => {
       const isTeam1 = match.team1Id === teamId;
-      const teamScore = isTeam1 ? match.team1Score! : match.team2Score!;
-      const opponentScore = isTeam1 ? match.team2Score! : match.team1Score!;
       
-      if (teamScore > opponentScore) {
+      // Get detailed scores if available, otherwise use final scores
+      const team1DetailedScore = match.team1DetailedScore || match.team1Score?.toString() || "";
+      const team2DetailedScore = match.team2DetailedScore || match.team2Score?.toString() || "";
+      
+      let teamGames = 0;
+      let opponentGames = 0;
+      
+      if (team1DetailedScore.includes(',') || team2DetailedScore.includes(',')) {
+        // Set-based scoring - sum up all games from all sets
+        const team1Sets = team1DetailedScore.split(',').map(s => s.trim());
+        const team2Sets = team2DetailedScore.split(',').map(s => s.trim());
+        
+        team1Sets.forEach((setScore, index) => {
+          if (setScore !== 'X' && setScore !== '') {
+            teamGames += isTeam1 ? parseInt(setScore) || 0 : parseInt(team2Sets[index]) || 0;
+            opponentGames += isTeam1 ? parseInt(team2Sets[index]) || 0 : parseInt(setScore) || 0;
+          }
+        });
+      } else {
+        // Simple scoring - these are likely already total games or match scores
+        teamGames = isTeam1 ? match.team1Score! : match.team2Score!;
+        opponentGames = isTeam1 ? match.team2Score! : match.team1Score!;
+      }
+      
+      // Count match wins/losses based on final scores
+      const teamMatchScore = isTeam1 ? match.team1Score! : match.team2Score!;
+      const opponentMatchScore = isTeam1 ? match.team2Score! : match.team1Score!;
+      
+      if (teamMatchScore > opponentMatchScore) {
         results.wins++;
-      } else if (opponentScore > teamScore) {
+      } else if (opponentMatchScore > teamMatchScore) {
         results.losses++;
       }
       
-      results.totalGames += teamScore + opponentScore;
-      results.gamesWon += teamScore;
+      results.totalGames += teamGames + opponentGames;
+      results.gamesWon += teamGames;
     });
     
     return results;
@@ -133,6 +160,30 @@ export default function WholeLadderPage() {
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.winPercentage - a.winPercentage;
     });
+  }
+
+  function getMatchBetweenTeams(team1Id: string, team2Id: string, matches: Match[]): Match | undefined {
+    return matches.find(match => 
+      (match.team1Id === team1Id && match.team2Id === team2Id) ||
+      (match.team1Id === team2Id && match.team2Id === team1Id)
+    );
+  }
+
+  function formatScore(match: Match, isTeam1First: boolean) {
+    if (!match.completed || match.team1Score === null || match.team2Score === null) {
+      return null;
+    }
+
+    const team1Score = match.team1DetailedScore || match.team1Score?.toString() || "";
+    const team2Score = match.team2DetailedScore || match.team2Score?.toString() || "";
+    
+    if (team1Score.includes(',') || team2Score.includes(',')) {
+      // Set-based scoring
+      return isTeam1First ? `${team1Score} : ${team2Score}` : `${team2Score} : ${team1Score}`;
+    } else {
+      // Simple scoring
+      return isTeam1First ? `${team1Score}:${team2Score}` : `${team2Score}:${team1Score}`;
+    }
   }
 
   if (!session) {
@@ -172,10 +223,35 @@ export default function WholeLadderPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Whole Ladder Standings</h1>
-        <Button onClick={loadAllLadders} variant="outline">
-          🔄 Refresh Data
-        </Button>
+        <h1 className="text-3xl font-bold">Whole Ladder {viewMode === 'summary' ? 'Standings' : 'Scores'}</h1>
+        <div className="flex items-center gap-4">
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('summary')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'summary'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Summary
+            </button>
+            <button
+              onClick={() => setViewMode('scores')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'scores'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Scores
+            </button>
+          </div>
+          <Button onClick={loadAllLadders} variant="outline">
+            🔄 Refresh Data
+          </Button>
+        </div>
       </div>
 
       {ladders.length === 0 ? (
@@ -199,11 +275,12 @@ export default function WholeLadderPage() {
                     </div>
                   </div>
 
-                  {standings.length === 0 ? (
+                  {ladder.teams.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       No teams in this ladder.
                     </div>
-                  ) : (
+                  ) : viewMode === 'summary' ? (
+                    // Summary View (Rankings Table)
                     <div className="overflow-auto rounded-lg border">
                       <table className="w-full">
                         <thead>
@@ -257,6 +334,85 @@ export default function WholeLadderPage() {
                               <td className="p-3 text-center">
                                 {standing.totalGames}
                               </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    // Scores View (Match Results Table)
+                    <div className="overflow-auto rounded-lg border">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="p-3 text-left font-medium">Team</th>
+                            {ladder.teams.map(team => (
+                              <th key={team.id} className="p-2 text-center font-medium min-w-[120px]">
+                                <div 
+                                  className="text-xs px-2 py-1 rounded text-white"
+                                  style={{ backgroundColor: team.color }}
+                                >
+                                  {getTeamDisplayName(team).length > 15 
+                                    ? getTeamDisplayName(team).substring(0, 15) + '...'
+                                    : getTeamDisplayName(team)
+                                  }
+                                </div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ladder.teams.map(rowTeam => (
+                            <tr key={rowTeam.id} className="border-b">
+                              <td className="p-3 font-medium">
+                                <div 
+                                  className="text-sm px-3 py-2 rounded text-white"
+                                  style={{ backgroundColor: rowTeam.color }}
+                                >
+                                  {getTeamDisplayName(rowTeam)}
+                                </div>
+                              </td>
+                              {ladder.teams.map(colTeam => {
+                                if (rowTeam.id === colTeam.id) {
+                                  return (
+                                    <td key={colTeam.id} className="p-2 bg-gray-100">
+                                      <div className="text-center text-gray-400 text-sm">—</div>
+                                    </td>
+                                  );
+                                }
+
+                                const match = getMatchBetweenTeams(rowTeam.id, colTeam.id, ladder.matches);
+                                const isRowTeamFirst = match && match.team1Id === rowTeam.id;
+                                
+                                if (!match) {
+                                  return (
+                                    <td key={colTeam.id} className="p-2 text-center">
+                                      <div className="text-gray-400 text-xs">No match</div>
+                                    </td>
+                                  );
+                                }
+
+                                const scoreDisplay = formatScore(match, isRowTeamFirst);
+
+                                return (
+                                  <td key={colTeam.id} className="p-2">
+                                    <div className="text-center">
+                                      {scoreDisplay ? (
+                                        <div className="text-sm font-mono">
+                                          {scoreDisplay}
+                                        </div>
+                                      ) : (
+                                        <div className="text-xs text-gray-500">
+                                          {match.confirmed ? 'Scheduled' : 'Pending'}
+                                        </div>
+                                      )}
+                                      <div className="text-xs text-gray-400 mt-1">
+                                        {new Date(match.startAt).toLocaleDateString()}
+                                      </div>
+                                    </div>
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>

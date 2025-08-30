@@ -21,8 +21,8 @@ return (
 {session && (
 <div className="absolute left-1/2 transform -translate-x-1/2 flex gap-6">
 <Link href="/" className="text-sm underline hover:text-blue-600 font-medium">Calendar</Link>
-<Link href="/scoring" className="text-sm underline hover:text-blue-600 font-medium">Scoring</Link>
 <Link href="/opponents" className="text-sm underline hover:text-blue-600 font-medium">Opponents</Link>
+<Link href="/scoring" className="text-sm underline hover:text-blue-600 font-medium">Scoring</Link>
 <Link href="/ladder" className="text-sm underline hover:text-blue-600 font-medium">Whole Ladder</Link>
 </div>
 )}
