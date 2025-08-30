@@ -46,6 +46,8 @@ export default function ScoringPage() {
   const [scores, setScores] = useState<Record<string, { team1Score: string; team2Score: string }>>({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [unsavedMatches, setUnsavedMatches] = useState<Set<string>>(new Set());
+  const [savingMatch, setSavingMatch] = useState<string | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState<{team1Id: string; team2Id: string} | null>(null);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleHour, setScheduleHour] = useState("18"); // Default to 6pm (18 in 24-hour format)
@@ -116,6 +118,8 @@ export default function ScoringPage() {
           };
         });
         setScores(initialScores);
+        // Clear unsaved matches since we just loaded from server
+        setUnsavedMatches(new Set());
       }
     } catch (error) {
       console.error("Failed to load teams and matches:", error);
@@ -201,6 +205,9 @@ export default function ScoringPage() {
         }
       };
     });
+    
+    // Mark this match as having unsaved changes
+    setUnsavedMatches(prev => new Set(prev).add(matchId));
   }
 
   function updateScore(matchId: string, field: 'team1Score' | 'team2Score', value: string) {
@@ -213,6 +220,106 @@ export default function ScoringPage() {
           [field]: value
         }
       }));
+      
+      // Mark this match as having unsaved changes
+      setUnsavedMatches(prev => new Set(prev).add(matchId));
+    }
+  }
+
+  async function saveIndividualScore(matchId: string) {
+    setSavingMatch(matchId);
+    try {
+      const scoreData = scores[matchId];
+      if (!scoreData) return;
+
+      // Check if we have valid scores to save
+      const hasValidScore = scoreData.team1Score !== "" && scoreData.team2Score !== "";
+      const hasValidSetScore = (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) &&
+        scoreData.team1Score.split(',').some(s => s !== "" && s !== "X") && 
+        scoreData.team2Score.split(',').some(s => s !== "" && s !== "X");
+      
+      if (!hasValidScore && !hasValidSetScore) {
+        setSaveMsg("Please enter valid scores");
+        setTimeout(() => setSaveMsg(""), 2000);
+        return;
+      }
+
+      let finalTeam1Score: string | number;
+      let finalTeam2Score: string | number;
+      let detailedTeam1Score: string | undefined = undefined;
+      let detailedTeam2Score: string | undefined = undefined;
+      
+      if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
+        // Set-based scoring - preserve the format and auto-fill X for decided matches
+        const calculated = calculateFinalScores(scoreData.team1Score, scoreData.team2Score);
+        
+        // Store detailed scores
+        detailedTeam1Score = calculated.team1Score;
+        detailedTeam2Score = calculated.team2Score;
+        
+        // Update the scores state with X markers
+        setScores(prev => ({
+          ...prev,
+          [matchId]: {
+            team1Score: calculated.team1Score,
+            team2Score: calculated.team2Score
+          }
+        }));
+        
+        if (matchFormat.winnerBy === 'sets') {
+          // Store sets won as final score
+          finalTeam1Score = calculated.team1SetsWon;
+          finalTeam2Score = calculated.team2SetsWon;
+        } else {
+          // Store total games as final score
+          const team1Games = calculated.team1Score.split(',')
+            .filter(s => s !== 'X' && s !== '')
+            .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+          const team2Games = calculated.team2Score.split(',')
+            .filter(s => s !== 'X' && s !== '')
+            .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+          finalTeam1Score = team1Games;
+          finalTeam2Score = team2Games;
+        }
+      } else {
+        // Single score format
+        finalTeam1Score = parseInt(scoreData.team1Score) || 0;
+        finalTeam2Score = parseInt(scoreData.team2Score) || 0;
+      }
+
+      const scoreToSave = {
+        matchId,
+        team1Score: finalTeam1Score,
+        team2Score: finalTeam2Score,
+        team1DetailedScore: detailedTeam1Score,
+        team2DetailedScore: detailedTeam2Score
+      };
+
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scores: [scoreToSave] }),
+      });
+
+      if (response.ok) {
+        setSaveMsg("Score saved!");
+        // Remove from unsaved matches
+        setUnsavedMatches(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(matchId);
+          return newSet;
+        });
+        setTimeout(() => setSaveMsg(""), 2000);
+      } else {
+        const error = await response.json();
+        setSaveMsg(error.error || "Failed to save score");
+        setTimeout(() => setSaveMsg(""), 3000);
+      }
+    } catch (error) {
+      setSaveMsg("Network error");
+      setTimeout(() => setSaveMsg(""), 3000);
+    } finally {
+      setSavingMatch(null);
     }
   }
 
@@ -729,6 +836,20 @@ export default function ScoringPage() {
                                     </tr>
                                   </tbody>
                                 </table>
+                                
+                                {/* Individual Save Score Button */}
+                                {unsavedMatches.has(match.id) && (
+                                  <div className="mt-2 flex justify-center">
+                                    <Button
+                                      onClick={() => saveIndividualScore(match.id)}
+                                      disabled={savingMatch === match.id}
+                                      size="sm"
+                                      className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
+                                    >
+                                      {savingMatch === match.id ? "Saving..." : "Save Score"}
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             </td>
                           );
