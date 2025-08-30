@@ -67,6 +67,8 @@ confirmedAt DateTime @default(now())
 createdAt DateTime @default(now())
 team1Score Int? // Score for team1
 team2Score Int? // Score for team2
+team1DetailedScore String? // Detailed set scores (e.g., "6,4,X")
+team2DetailedScore String? // Detailed set scores (e.g., "3,6,X")
 completed Boolean @default(false) // Whether the match has been played and scored
 
 // Ladder assignment

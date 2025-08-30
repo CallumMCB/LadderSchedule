@@ -54,13 +54,23 @@ export async function POST(req: NextRequest) {
       }
 
       // Update the match with scores
+      const updateData: any = {
+        team1Score: score.team1Score,
+        team2Score: score.team2Score,
+        completed: true
+      };
+      
+      // Add detailed scores if provided
+      if (score.team1DetailedScore) {
+        updateData.team1DetailedScore = score.team1DetailedScore;
+      }
+      if (score.team2DetailedScore) {
+        updateData.team2DetailedScore = score.team2DetailedScore;
+      }
+      
       return prisma.match.update({
         where: { id: score.matchId },
-        data: {
-          team1Score: score.team1Score,
-          team2Score: score.team2Score,
-          completed: true
-        }
+        data: updateData
       });
     });
 
@@ -111,6 +121,8 @@ export async function GET(req: NextRequest) {
         team2Id: true,
         team1Score: true,
         team2Score: true,
+        team1DetailedScore: true,
+        team2DetailedScore: true,
         completed: true
       }
     });

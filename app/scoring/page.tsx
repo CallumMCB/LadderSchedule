@@ -21,6 +21,8 @@ type Match = {
   team2Id: string;
   team1Score?: number;
   team2Score?: number;
+  team1DetailedScore?: string;
+  team2DetailedScore?: string;
   completed?: boolean;
 };
 
@@ -109,8 +111,8 @@ export default function ScoringPage() {
         const initialScores: Record<string, { team1Score: string; team2Score: string }> = {};
         allMatchesData.matches?.forEach((match: Match) => {
           initialScores[match.id] = {
-            team1Score: match.team1Score?.toString() || "",
-            team2Score: match.team2Score?.toString() || ""
+            team1Score: match.team1DetailedScore || match.team1Score?.toString() || "",
+            team2Score: match.team2DetailedScore || match.team2Score?.toString() || ""
           };
         });
         setScores(initialScores);
@@ -315,7 +317,9 @@ export default function ScoringPage() {
           return {
             matchId,
             team1Score: finalTeam1Score,
-            team2Score: finalTeam2Score
+            team2Score: finalTeam2Score,
+            team1DetailedScore: scoreData.team1Score.includes(',') ? calculated.team1Score : undefined,
+            team2DetailedScore: scoreData.team2Score.includes(',') ? calculated.team2Score : undefined
           };
         });
 

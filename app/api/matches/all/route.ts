@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
         team2Id: match.team2Id,
         team1Score: match.team1Score,
         team2Score: match.team2Score,
+        team1DetailedScore: match.team1DetailedScore,
+        team2DetailedScore: match.team2DetailedScore,
         completed: match.completed
       }))
     });
