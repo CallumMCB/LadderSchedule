@@ -175,8 +175,8 @@ export default function ScoringPage() {
   }
 
   function updateSetScore(matchId: string, field: 'team1Score' | 'team2Score', setIndex: number, value: string) {
-    // Only allow positive integers
-    if (value !== "" && (!/^\d+$/.test(value) || parseInt(value) < 0)) {
+    // Allow positive integers or 'X' for unplayed sets
+    if (value !== "" && value !== "X" && (!/^\d+$/.test(value) || parseInt(value) < 0)) {
       return;
     }
     
@@ -214,6 +214,52 @@ export default function ScoringPage() {
     }
   }
 
+  function calculateFinalScores(team1ScoreString: string, team2ScoreString: string) {
+    // Auto-fill 'X' for unplayed sets if match is already decided
+    const team1Sets = team1ScoreString.split(',').map(s => s.trim());
+    const team2Sets = team2ScoreString.split(',').map(s => s.trim());
+    
+    // Count sets won so far
+    let team1SetsWon = 0;
+    let team2SetsWon = 0;
+    let playedSets = 0;
+    
+    for (let i = 0; i < Math.max(team1Sets.length, team2Sets.length); i++) {
+      const t1Games = team1Sets[i];
+      const t2Games = team2Sets[i];
+      
+      if (t1Games && t2Games && t1Games !== "" && t2Games !== "") {
+        playedSets++;
+        const t1Score = parseInt(t1Games) || 0;
+        const t2Score = parseInt(t2Games) || 0;
+        if (t1Score > t2Score) team1SetsWon++;
+        else if (t2Score > t1Score) team2SetsWon++;
+      }
+    }
+    
+    // Check if match is decided (someone has majority of sets)
+    const setsToWin = Math.ceil(matchFormat.sets / 2);
+    const matchDecided = team1SetsWon >= setsToWin || team2SetsWon >= setsToWin;
+    
+    // Fill remaining sets with 'X' if match is decided
+    if (matchDecided) {
+      while (team1Sets.length < matchFormat.sets) team1Sets.push('X');
+      while (team2Sets.length < matchFormat.sets) team2Sets.push('X');
+      
+      for (let i = playedSets; i < matchFormat.sets; i++) {
+        if (team1Sets[i] === "" || team1Sets[i] === undefined) team1Sets[i] = 'X';
+        if (team2Sets[i] === "" || team2Sets[i] === undefined) team2Sets[i] = 'X';
+      }
+    }
+    
+    return {
+      team1Score: team1Sets.join(','),
+      team2Score: team2Sets.join(','),
+      team1SetsWon,
+      team2SetsWon
+    };
+  }
+
   async function saveScores() {
     setSaving(true);
     try {
@@ -223,44 +269,53 @@ export default function ScoringPage() {
           if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
             const team1Sets = scoreData.team1Score.split(',');
             const team2Sets = scoreData.team2Score.split(',');
-            return team1Sets.some(s => s !== "") && team2Sets.some(s => s !== "");
+            return team1Sets.some(s => s !== "" && s !== "X") && team2Sets.some(s => s !== "" && s !== "X");
           }
           // For single score, require both scores
           return scoreData.team1Score !== "" && scoreData.team2Score !== "";
         })
         .map(([matchId, scoreData]) => {
-          // Calculate final scores based on match format
-          let team1FinalScore = 0;
-          let team2FinalScore = 0;
+          let finalTeam1Score: string | number;
+          let finalTeam2Score: string | number;
           
           if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
-            // Set-based scoring
-            const team1Sets = scoreData.team1Score.split(',').map(s => parseInt(s) || 0);
-            const team2Sets = scoreData.team2Score.split(',').map(s => parseInt(s) || 0);
+            // Set-based scoring - preserve the format and auto-fill X for decided matches
+            const calculated = calculateFinalScores(scoreData.team1Score, scoreData.team2Score);
+            
+            // Update the scores state with X markers
+            setScores(prev => ({
+              ...prev,
+              [matchId]: {
+                team1Score: calculated.team1Score,
+                team2Score: calculated.team2Score
+              }
+            }));
             
             if (matchFormat.winnerBy === 'sets') {
-              // Count sets won
-              for (let i = 0; i < Math.max(team1Sets.length, team2Sets.length); i++) {
-                const t1Games = team1Sets[i] || 0;
-                const t2Games = team2Sets[i] || 0;
-                if (t1Games > t2Games) team1FinalScore++;
-                else if (t2Games > t1Games) team2FinalScore++;
-              }
+              // Store sets won as final score
+              finalTeam1Score = calculated.team1SetsWon;
+              finalTeam2Score = calculated.team2SetsWon;
             } else {
-              // Count total games
-              team1FinalScore = team1Sets.reduce((sum, games) => sum + games, 0);
-              team2FinalScore = team2Sets.reduce((sum, games) => sum + games, 0);
+              // Store total games as final score
+              const team1Games = calculated.team1Score.split(',')
+                .filter(s => s !== 'X' && s !== '')
+                .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+              const team2Games = calculated.team2Score.split(',')
+                .filter(s => s !== 'X' && s !== '')
+                .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+              finalTeam1Score = team1Games;
+              finalTeam2Score = team2Games;
             }
           } else {
             // Single score format
-            team1FinalScore = parseInt(scoreData.team1Score) || 0;
-            team2FinalScore = parseInt(scoreData.team2Score) || 0;
+            finalTeam1Score = parseInt(scoreData.team1Score) || 0;
+            finalTeam2Score = parseInt(scoreData.team2Score) || 0;
           }
           
           return {
             matchId,
-            team1Score: team1FinalScore,
-            team2Score: team2FinalScore
+            team1Score: finalTeam1Score,
+            team2Score: finalTeam2Score
           };
         });
 
@@ -618,14 +673,17 @@ export default function ScoringPage() {
                                           <Input
                                             type="text"
                                             value={getSetScore(rowTeamScore, setIndex)}
-                                            onChange={(e) => updateSetScore(
-                                              match.id, 
-                                              isRowTeamFirst ? 'team1Score' : 'team2Score', 
-                                              setIndex,
-                                              e.target.value
-                                            )}
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              if (value === 'X' || value === 'x') {
+                                                updateSetScore(match.id, isRowTeamFirst ? 'team1Score' : 'team2Score', setIndex, 'X');
+                                              } else {
+                                                updateSetScore(match.id, isRowTeamFirst ? 'team1Score' : 'team2Score', setIndex, value);
+                                              }
+                                            }}
                                             className="w-9 h-5 text-center text-xs border"
                                             placeholder="0"
+                                            disabled={getSetScore(rowTeamScore, setIndex) === 'X'}
                                           />
                                         </td>
                                       ))}
@@ -644,24 +702,23 @@ export default function ScoringPage() {
                                           <Input
                                             type="text"
                                             value={getSetScore(colTeamScore, setIndex)}
-                                            onChange={(e) => updateSetScore(
-                                              match.id, 
-                                              isRowTeamFirst ? 'team2Score' : 'team1Score', 
-                                              setIndex,
-                                              e.target.value
-                                            )}
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              if (value === 'X' || value === 'x') {
+                                                updateSetScore(match.id, isRowTeamFirst ? 'team2Score' : 'team1Score', setIndex, 'X');
+                                              } else {
+                                                updateSetScore(match.id, isRowTeamFirst ? 'team2Score' : 'team1Score', setIndex, value);
+                                              }
+                                            }}
                                             className="w-9 h-5 text-center text-xs border"
                                             placeholder="0"
+                                            disabled={getSetScore(colTeamScore, setIndex) === 'X'}
                                           />
                                         </td>
                                       ))}
                                     </tr>
                                   </tbody>
                                 </table>
-                                
-                                <div className="text-xs text-center text-gray-500">
-                                  {new Date(match.startAt).toLocaleDateString()}
-                                </div>
                               </div>
                             </td>
                           );
