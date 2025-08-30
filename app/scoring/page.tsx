@@ -279,10 +279,16 @@ export default function ScoringPage() {
         .map(([matchId, scoreData]) => {
           let finalTeam1Score: string | number;
           let finalTeam2Score: string | number;
+          let detailedTeam1Score: string | undefined = undefined;
+          let detailedTeam2Score: string | undefined = undefined;
           
           if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
             // Set-based scoring - preserve the format and auto-fill X for decided matches
             const calculated = calculateFinalScores(scoreData.team1Score, scoreData.team2Score);
+            
+            // Store detailed scores
+            detailedTeam1Score = calculated.team1Score;
+            detailedTeam2Score = calculated.team2Score;
             
             // Update the scores state with X markers
             setScores(prev => ({
@@ -318,8 +324,8 @@ export default function ScoringPage() {
             matchId,
             team1Score: finalTeam1Score,
             team2Score: finalTeam2Score,
-            team1DetailedScore: scoreData.team1Score.includes(',') ? calculated.team1Score : undefined,
-            team2DetailedScore: scoreData.team2Score.includes(',') ? calculated.team2Score : undefined
+            team1DetailedScore: detailedTeam1Score,
+            team2DetailedScore: detailedTeam2Score
           };
         });
 
