@@ -23,6 +23,7 @@ type Match = {
   team1DetailedScore?: string;
   team2DetailedScore?: string;
   completed?: boolean;
+  confirmed?: boolean;
 };
 
 type LadderData = {
