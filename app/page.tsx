@@ -1079,6 +1079,24 @@ export default function TennisLadderScheduler() {
       })
     ];
 
+    // Save partner availability that I set via double-click
+    const myTeamObj = teamsData.teams?.find(team => team.id === teamsData.myTeamId);
+    if (myTeamObj && myTeamObj.member2 && myTeamObj.member2.id !== myTeamObj.member1.id && partnerAvailSetByMe.size > 0) {
+      // Only save partner availability if partner is a different person and I set some slots for them
+      promises.push(
+        fetch('/api/availability/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            weekStartISO: weekStart.toISOString(),
+            availableSlots: Array.from(partnerAvailSetByMe),
+            unavailableSlots: [], // We only set partner as available via double-click, never unavailable
+            targetUserId: myTeamObj.member2.id,
+          }),
+        })
+      );
+    }
+
     if (takeoverSlots.length > 0) {
       const myUserId = teamsData.currentUserId;
       if (myUserId) {
@@ -1104,6 +1122,7 @@ export default function TennisLadderScheduler() {
     if (allSuccess) {
       setSaveMsg("Saved successfully!");
       setProxyTakeoverSlots(new Set());
+      setPartnerAvailSetByMe(new Set()); // Clear partner availability that I set after successful save
       await loadAllMembersAvailability();
       setTimeout(() => setSaveMsg(""), 2000);
     } else {
