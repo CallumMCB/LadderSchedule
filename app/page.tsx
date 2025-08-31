@@ -2500,21 +2500,27 @@ function AvailabilityGrid({
                 const proxyAvailForSlot = proxyAvail.has(slotKey);
                 const proxyUnavailForSlot = proxyUnavail.has(slotKey);
                 
-                // Check if we have any changes for this team (current proxy state)
-                const teamHasChanges = proxyAvailForSlot || proxyUnavailForSlot;
-                  
-                if (teamHasChanges || actingAsTeam === team.id) {
-                  // Use proxy state completely when we're acting on this team or have changes
-                  member1Available = proxyAvailForSlot;
-                  member1Unavailable = proxyUnavailForSlot;
-                  member2Available = proxyAvailForSlot;
-                  member2Unavailable = proxyUnavailForSlot;
-                } else {
-                  member1Available = member1ExistingAvail;
+                // Always start with the existing availability as the base
+                member1Available = member1ExistingAvail;
+                member2Available = member2ExistingAvail;
+                member1Unavailable = false;
+                member2Unavailable = false;
+                
+                // Apply proxy modifications on top of existing state
+                if (proxyAvailForSlot) {
+                  // Proxy says available - override to available
+                  member1Available = true;
+                  member2Available = true;
                   member1Unavailable = false;
-                  member2Available = member2ExistingAvail;
                   member2Unavailable = false;
+                } else if (proxyUnavailForSlot) {
+                  // Proxy says unavailable - override to unavailable
+                  member1Available = false;
+                  member2Available = false;
+                  member1Unavailable = true;
+                  member2Unavailable = true;
                 }
+                // If no proxy state, keep the existing availability (no override)
               }
             } else {
               member1Available = team.member1.availability.includes(slotKey);
@@ -2546,15 +2552,14 @@ function AvailabilityGrid({
             return (
               <div 
                 key={team.id} 
-                className={`relative flex flex-col ${actingAsTeam === team.id ? 'ring-2 ring-blue-400' : ''}`}
+                className={`relative flex flex-col ${actingAsTeam === team.id ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
                 style={{ width: teamWidth }}
               >
                 {/* Top half - Member 1 */}
                 <div 
                   className="flex-1 opacity-70 relative"
                   style={{ 
-                    backgroundColor: member1Available ? team.color : member1Unavailable ? '#000000' : 
-                      (actingAsTeam === team.id && !member1Available && !member1Unavailable) ? '#FFFFFF' : 'transparent'
+                    backgroundColor: member1Available ? team.color : member1Unavailable ? '#000000' : 'transparent'
                   }}
                 >
                   {/* Add stripes if set by someone else or if we're making proxy changes */}
@@ -2581,8 +2586,7 @@ function AvailabilityGrid({
                 <div 
                   className="flex-1 opacity-70 relative"
                   style={{ 
-                    backgroundColor: member2Available ? team.color : member2Unavailable ? '#000000' : 
-                      (actingAsTeam === team.id && !member2Available && !member2Unavailable) ? '#FFFFFF' : 'transparent'
+                    backgroundColor: member2Available ? team.color : member2Unavailable ? '#000000' : 'transparent'
                   }}
                 >
                   {/* Add stripes if set by someone else or if we're making proxy changes */}
