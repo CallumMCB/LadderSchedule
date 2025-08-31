@@ -3,6 +3,7 @@ import Providers from "./providers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Link from "next/link";
+import MobileNav from "./components/MobileNav";
 
 export const metadata = { title: "Tennis Ladder", description: "Weekly scheduler" };
 
@@ -17,15 +18,18 @@ return (
 <header className="flex items-center justify-between mb-4">
 <h1 className="text-xl font-bold">Doubles Tennis Ladder</h1>
 
-{/* Center Navigation */}
+{/* Desktop Navigation */}
 {session && (
-<div className="absolute left-1/2 transform -translate-x-1/2 flex gap-6">
+<div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 gap-6">
 <Link href="/" className="text-sm underline hover:text-blue-600 font-medium">Calendar</Link>
 <Link href="/opponents" className="text-sm underline hover:text-blue-600 font-medium">Opponents</Link>
 <Link href="/scoring" className="text-sm underline hover:text-blue-600 font-medium">Scoring</Link>
 <Link href="/ladder" className="text-sm underline hover:text-blue-600 font-medium">Whole Ladder</Link>
 </div>
 )}
+
+{/* Mobile Navigation */}
+{session && <MobileNav />}
 
 <div className="flex gap-4">
 {session ? (
