@@ -720,10 +720,10 @@ export default function TennisLadderScheduler() {
         effectiveAvailable 
       });
       
-      // Three-state cycle: available → not_available → none → available
+      // Three-state cycle: available → unavailable → unset → available
       // Determine the current effective display state
-      if (effectiveAvailable) {
-        // Currently showing as Available → change to Not Available  
+      if (effectiveAvailable && !hasProxyUnavailable) {
+        // Currently showing as Available → change to Unavailable  
         setProxyAvail(prev => {
           const next = new Set(prev);
           next.delete(key);
@@ -731,7 +731,7 @@ export default function TennisLadderScheduler() {
         });
         setProxyUnavail(prev => new Set(prev).add(key));
       } else if (hasProxyUnavailable) {
-        // Currently showing as Not Available (via proxy) → change to None (remove proxy)
+        // Currently showing as Unavailable (via proxy) → change to Unset (remove all proxy modifications)
         setProxyUnavail(prev => {
           const next = new Set(prev);
           next.delete(key);
@@ -742,16 +742,8 @@ export default function TennisLadderScheduler() {
           next.delete(key);
           return next;
         });
-      } else if (currentActualAvailable) {
-        // Has existing available state from DB, but no proxy modifications → make unavailable
-        setProxyAvail(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-        setProxyUnavail(prev => new Set(prev).add(key));
       } else {
-        // None (no proxy modifications, no existing available state) → Available
+        // Unset/None state (no proxy modifications) → change to Available
         setProxyAvail(prev => new Set(prev).add(key));
         setProxyUnavail(prev => {
           const next = new Set(prev);
@@ -1003,22 +995,29 @@ export default function TennisLadderScheduler() {
         
         teamNames.push(team.member1.name || team.member1.email);
         
-        // Save for member1
-        savePromises.push(
-          fetch('/api/availability/proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              weekStartISO: weekStart.toISOString(),
-              availableSlots: Array.from(changes.avail),
-              unavailableSlots: Array.from(changes.unavail),
-              targetUserId: team.member1.id,
-            }),
-          })
-        );
+        // Determine which members to save based on actingAsPlayer
+        const shouldSaveMember1 = !actingAsPlayer || actingAsPlayer === team.member1.id;
+        const shouldSaveMember2 = (!actingAsPlayer || actingAsPlayer === team.member2?.id) && 
+                                  team.member2 && team.member2.id !== team.member1.id;
         
-        // Save for member2 if different person
-        if (team.member2 && team.member2.id !== team.member1.id) {
+        // Save for member1 if needed
+        if (shouldSaveMember1) {
+          savePromises.push(
+            fetch('/api/availability/proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                weekStartISO: weekStart.toISOString(),
+                availableSlots: Array.from(changes.avail),
+                unavailableSlots: Array.from(changes.unavail),
+                targetUserId: team.member1.id,
+              }),
+            })
+          );
+        }
+        
+        // Save for member2 if needed and different person
+        if (shouldSaveMember2) {
           savePromises.push(
             fetch('/api/availability/proxy', {
               method: 'POST',
@@ -2469,14 +2468,19 @@ function AvailabilityGrid({
                 const member1ProxyAvail = proxyAvail.has(slotKey);
                 const member1ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                // If proxy state exists, use it completely; otherwise use existing
-                if (member1ProxyAvail || member1ProxyUnavail) {
-                  member1Available = member1ProxyAvail;
-                  member1Unavailable = member1ProxyUnavail;
-                } else {
-                  member1Available = member1ExistingAvail;
+                // Start with existing state and apply proxy modifications
+                member1Available = member1ExistingAvail;
+                member1Unavailable = false;
+                
+                // Apply proxy modifications only for this specific member
+                if (member1ProxyAvail) {
+                  member1Available = true;
                   member1Unavailable = false;
+                } else if (member1ProxyUnavail) {
+                  member1Available = false;
+                  member1Unavailable = true;
                 }
+                // If no proxy state, keep existing state
                 member2Available = team.member2?.availability.includes(slotKey) || false;
               } else if (actingAsPlayer === team.member2?.id) {
                 // Acting as member 2 only - show existing OR proxy state
@@ -2485,14 +2489,19 @@ function AvailabilityGrid({
                 const member2ProxyAvail = proxyAvail.has(slotKey);
                 const member2ProxyUnavail = proxyUnavail.has(slotKey);
                 
-                // If proxy state exists, use it completely; otherwise use existing
-                if (member2ProxyAvail || member2ProxyUnavail) {
-                  member2Available = member2ProxyAvail;
-                  member2Unavailable = member2ProxyUnavail;
-                } else {
-                  member2Available = member2ExistingAvail;
+                // Start with existing state and apply proxy modifications
+                member2Available = member2ExistingAvail;
+                member2Unavailable = false;
+                
+                // Apply proxy modifications only for this specific member
+                if (member2ProxyAvail) {
+                  member2Available = true;
                   member2Unavailable = false;
+                } else if (member2ProxyUnavail) {
+                  member2Available = false;
+                  member2Unavailable = true;
                 }
+                // If no proxy state, keep existing state
               } else {
                 // Acting for both members - show existing OR proxy state for each
                 const member1ExistingAvail = team.member1.availability.includes(slotKey);
