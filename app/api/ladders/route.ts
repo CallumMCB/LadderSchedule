@@ -16,10 +16,20 @@ export async function GET() {
       include: { ladder: true }
     });
 
-    // Get all active ladders
+    // Get all active ladders with all fields including matchFormat
     const allLadders = await prisma.ladder.findMany({
       where: { isActive: true },
-      orderBy: { number: 'asc' }
+      orderBy: { number: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        number: true,
+        endDate: true,
+        isActive: true,
+        winnerBy: true,
+        matchFormat: true,
+        createdAt: true
+      }
     });
 
     return NextResponse.json({
