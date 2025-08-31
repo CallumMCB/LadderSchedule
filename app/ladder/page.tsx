@@ -46,6 +46,10 @@ export default function WholeLadderPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'summary' | 'scores'>('summary');
   const [showFormatEditor, setShowFormatEditor] = useState<string | null>(null);
+  const [showFormatModal, setShowFormatModal] = useState<{
+    ladderId: string;
+    matchFormat: { sets: number; gamesPerSet: number; winnerBy: string };
+  } | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -340,6 +344,12 @@ export default function WholeLadderPage() {
     );
   }
 
+  function getSetScore(scoreString: string, setIndex: number): string {
+    if (!scoreString) return "";
+    const sets = scoreString.split(',');
+    return sets[setIndex] || "";
+  }
+
   function formatScore(match: Match, isTeam1First: boolean) {
     if (!match.completed || match.team1Score === null || match.team2Score === null) {
       return null;
@@ -449,36 +459,18 @@ export default function WholeLadderPage() {
                     </div>
                     <div>
                       <Button 
-                        onClick={() => setShowFormatEditor(showFormatEditor === ladder.id ? null : ladder.id)}
+                        onClick={() => setShowFormatModal({
+                          ladderId: ladder.id,
+                          matchFormat: ladder.matchFormat || { sets: 3, gamesPerSet: 6, winnerBy: 'sets' }
+                        })}
                         variant="outline"
                         size="sm"
                       >
-                        ⚙️ Format
+                        Change Format
                       </Button>
                     </div>
                   </div>
 
-                  {/* Format Editor */}
-                  {showFormatEditor === ladder.id && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                      <h3 className="text-lg font-semibold mb-3">Match Format Settings</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {[1, 2, 3, 5].map(sets => (
-                          <Button
-                            key={sets}
-                            onClick={() => updateLadderFormat(ladder.id, sets)}
-                            variant={ladder.matchFormat?.sets === sets ? "default" : "outline"}
-                            size="sm"
-                          >
-                            {sets} Set{sets > 1 ? 's' : ''}
-                          </Button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Note: Changing format will update all existing match scores. Shortening will remove extra sets, extending will add X for unplayed sets.
-                      </p>
-                    </div>
-                  )}
 
                   {ladder.teams.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -547,96 +539,27 @@ export default function WholeLadderPage() {
                       </table>
                     </div>
                   ) : (
-                    // Scores View (Match Results Table)
-                    <div className="overflow-auto md:rounded-lg md:border rounded-none border-none">
-                      {(ladder.matchFormat?.sets === 1) ? (
-                        // Compact 2x2 table for single set format
-                        <table className="w-full max-w-md">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="p-3 w-16"></th>
-                              {ladder.teams.slice(0, 2).map(team => (
-                                <th key={team.id} className="p-2 text-center font-medium">
-                                  <div 
-                                    className="w-8 h-8 rounded mx-auto"
-                                    style={{ backgroundColor: team.color }}
-                                    title={getTeamDisplayName(team)}
-                                  />
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ladder.teams.slice(0, 2).map(rowTeam => (
-                              <tr key={rowTeam.id} className="border-b">
-                                <td className="p-3 font-medium">
-                                  <div 
-                                    className="w-8 h-8 rounded"
-                                    style={{ backgroundColor: rowTeam.color }}
-                                    title={getTeamDisplayName(rowTeam)}
-                                  />
-                                </td>
-                                {ladder.teams.slice(0, 2).map(colTeam => {
-                                  if (rowTeam.id === colTeam.id) {
-                                    return (
-                                      <td key={colTeam.id} className="p-2 bg-gray-100">
-                                        <div className="text-center text-gray-400 text-sm">—</div>
-                                      </td>
-                                    );
+                    // Scores View (Match Results Table) - Matching scoring page style
+                    <div className="overflow-auto rounded-lg border">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="p-3 text-left font-medium">Team</th>
+                            {ladder.teams.map(team => (
+                              <th key={team.id} className="p-2 text-center font-medium min-w-[120px]">
+                                <div 
+                                  className="text-xs px-2 py-1 rounded text-white"
+                                  style={{ backgroundColor: team.color }}
+                                >
+                                  {getTeamDisplayName(team).length > 15 
+                                    ? getTeamDisplayName(team).substring(0, 15) + '...'
+                                    : getTeamDisplayName(team)
                                   }
-
-                                  const match = getMatchBetweenTeams(rowTeam.id, colTeam.id, ladder.matches);
-                                  const isRowTeamFirst = match ? match.team1Id === rowTeam.id : false;
-                                  const scoreDisplay = match ? formatScore(match, isRowTeamFirst) : null;
-
-                                  return (
-                                    <td key={colTeam.id} className="p-2">
-                                      <div className="text-center">
-                                        {scoreDisplay ? (
-                                          <div className="text-sm font-mono font-semibold">
-                                            {scoreDisplay}
-                                          </div>
-                                        ) : match ? (
-                                          <div className="text-xs text-gray-500">
-                                            {match.confirmed ? 'Scheduled' : 'Pending'}
-                                          </div>
-                                        ) : (
-                                          <div className="text-xs text-gray-400">No match</div>
-                                        )}
-                                        {match && (
-                                          <div className="text-xs text-gray-400 mt-1">
-                                            {new Date(match.startAt).toLocaleDateString()}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
+                                </div>
+                              </th>
                             ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        // Standard full team grid for multi-set format
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="p-3 text-left font-medium">Team</th>
-                              {ladder.teams.map(team => (
-                                <th key={team.id} className="p-2 text-center font-medium min-w-[120px]">
-                                  <div 
-                                    className="text-xs px-2 py-1 rounded text-white"
-                                    style={{ backgroundColor: team.color }}
-                                  >
-                                    {getTeamDisplayName(team).length > 15 
-                                      ? getTeamDisplayName(team).substring(0, 15) + '...'
-                                      : getTeamDisplayName(team)
-                                    }
-                                  </div>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
+                          </tr>
+                        </thead>
                         <tbody>
                           {ladder.teams.map(rowTeam => (
                             <tr key={rowTeam.id} className="border-b">
@@ -658,48 +581,217 @@ export default function WholeLadderPage() {
                                 }
 
                                 const match = getMatchBetweenTeams(rowTeam.id, colTeam.id, ladder.matches);
-                                const isRowTeamFirst = match ? match.team1Id === rowTeam.id : false;
+                                const isRowTeamFirst = match && match.team1Id === rowTeam.id;
                                 
                                 if (!match) {
                                   return (
                                     <td key={colTeam.id} className="p-2 text-center">
-                                      <div className="text-gray-400 text-xs">No match</div>
+                                      <div className="text-gray-400 text-xs mb-1">No match</div>
                                     </td>
                                   );
                                 }
 
-                                const scoreDisplay = formatScore(match, isRowTeamFirst);
+                                const scoreData = {
+                                  team1Score: match.team1DetailedScore || match.team1Score?.toString() || "",
+                                  team2Score: match.team2DetailedScore || match.team2Score?.toString() || ""
+                                };
+                                const rowTeamScore = isRowTeamFirst ? scoreData.team1Score : scoreData.team2Score;
+                                const colTeamScore = isRowTeamFirst ? scoreData.team2Score : scoreData.team1Score;
 
                                 return (
                                   <td key={colTeam.id} className="p-2">
-                                    <div className="text-center">
-                                      {scoreDisplay ? (
-                                        <div className="text-sm font-mono">
-                                          {scoreDisplay}
-                                        </div>
+                                    <div className="flex justify-center">
+                                      {match.completed ? (
+                                        // Completed match - show score table like scoring page
+                                        <table className="text-xs border-collapse">
+                                          <thead>
+                                            <tr>
+                                              <th className="w-4"></th>
+                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => (
+                                                <th key={setIndex} className="text-center text-xs font-medium text-gray-600 px-1">
+                                                  S{setIndex + 1}
+                                                </th>
+                                              ))}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {/* Row team scores */}
+                                            <tr>
+                                              <td className="pr-2 text-center">
+                                                <div 
+                                                  className="w-2 h-2 rounded-full mx-auto"
+                                                  style={{ backgroundColor: rowTeam.color }}
+                                                />
+                                              </td>
+                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => (
+                                                <td key={setIndex}>
+                                                  <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
+                                                    {getSetScore(rowTeamScore, setIndex) || '0'}
+                                                  </div>
+                                                </td>
+                                              ))}
+                                            </tr>
+                                            
+                                            {/* Column team scores */}
+                                            <tr>
+                                              <td className="pr-2 text-center">
+                                                <div 
+                                                  className="w-2 h-2 rounded-full mx-auto"
+                                                  style={{ backgroundColor: colTeam.color }}
+                                                />
+                                              </td>
+                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => (
+                                                <td key={setIndex}>
+                                                  <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
+                                                    {getSetScore(colTeamScore, setIndex) || '0'}
+                                                  </div>
+                                                </td>
+                                              ))}
+                                            </tr>
+                                          </tbody>
+                                        </table>
                                       ) : (
-                                        <div className="text-xs text-gray-500">
-                                          {match.confirmed ? 'Scheduled' : 'Pending'}
+                                        // Unplayed match
+                                        <div className="text-center">
+                                          <div className="text-xs text-gray-500 mb-1">
+                                            {match.confirmed ? 'Scheduled' : 'Pending'}
+                                          </div>
+                                          <div className="text-xs text-gray-400">
+                                            {new Date(match.startAt).toLocaleDateString()}
+                                          </div>
                                         </div>
                                       )}
-                                      <div className="text-xs text-gray-400 mt-1">
-                                        {new Date(match.startAt).toLocaleDateString()}
-                                      </div>
                                     </div>
                                   </td>
                                 );
                               })}
                             </tr>
                           ))}
-                          </tbody>
-                        </table>
-                      )}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Format Settings Modal - Copied from scoring page */}
+      {showFormatModal && (
+        <div className="fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50" 
+            onClick={() => setShowFormatModal(null)}
+          />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Match Format Settings</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Number of Sets</label>
+                <select
+                  value={showFormatModal.matchFormat.sets}
+                  onChange={(e) => setShowFormatModal(prev => prev ? {
+                    ...prev,
+                    matchFormat: { ...prev.matchFormat, sets: parseInt(e.target.value) }
+                  } : null)}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value={1}>1 Set</option>
+                  <option value={3}>3 Sets (Best of 3)</option>
+                  <option value={5}>5 Sets (Best of 5)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Games per Set</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={showFormatModal.matchFormat.gamesPerSet}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value >= 1 && value <= 20) {
+                      setShowFormatModal(prev => prev ? {
+                        ...prev,
+                        matchFormat: { ...prev.matchFormat, gamesPerSet: value }
+                      } : null);
+                    }
+                  }}
+                  className="w-full p-2 border rounded-lg"
+                  placeholder="6"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter number of games per set (1-20)</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Winner Determined By</label>
+                <select
+                  value={showFormatModal.matchFormat.winnerBy}
+                  onChange={(e) => setShowFormatModal(prev => prev ? {
+                    ...prev,
+                    matchFormat: { ...prev.matchFormat, winnerBy: e.target.value as 'sets' | 'games' }
+                  } : null)}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="sets">Most Sets Won</option>
+                  <option value="games">Most Games Won</option>
+                </select>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <div className="font-medium text-blue-900 mb-1">Current Format:</div>
+                <div className="text-blue-800">
+                  {showFormatModal.matchFormat.sets === 1 ? '1 Set' : `Best of ${showFormatModal.matchFormat.sets} Sets`} • {showFormatModal.matchFormat.gamesPerSet} Games per Set
+                  <br />
+                  Winner: {showFormatModal.matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowFormatModal(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!showFormatModal) return;
+                  
+                  try {
+                    const response = await fetch('/api/ladders/update-format', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        ladderId: showFormatModal.ladderId,
+                        newMatchFormat: showFormatModal.matchFormat
+                      }),
+                    });
+
+                    if (response.ok) {
+                      setShowFormatModal(null);
+                      // Reload data to reflect changes
+                      setTimeout(async () => {
+                        await loadAllLadders();
+                      }, 500);
+                    } else {
+                      const error = await response.json();
+                      console.error('Failed to update format:', error);
+                    }
+                  } catch (error) {
+                    console.error('Network error updating format:', error);
+                  }
+                }}
+              >
+                Save Format
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
