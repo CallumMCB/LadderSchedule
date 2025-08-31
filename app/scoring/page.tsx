@@ -1342,10 +1342,30 @@ export default function ScoringPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setShowFormatModal(false);
-                  setSaveMsg("Format updated!");
-                  setTimeout(() => setSaveMsg(""), 2000);
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/ladders/update-format', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        ladderId: selectedLadderId,
+                        newMatchFormat: matchFormat
+                      }),
+                    });
+
+                    if (response.ok) {
+                      setShowFormatModal(false);
+                      setSaveMsg("Format updated and saved to database!");
+                      setTimeout(() => setSaveMsg(""), 3000);
+                    } else {
+                      const error = await response.json();
+                      setSaveMsg(error.error || "Failed to update format");
+                      setTimeout(() => setSaveMsg(""), 3000);
+                    }
+                  } catch (error) {
+                    setSaveMsg("Network error updating format");
+                    setTimeout(() => setSaveMsg(""), 3000);
+                  }
                 }}
               >
                 Save Format
