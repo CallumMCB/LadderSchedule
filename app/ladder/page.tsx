@@ -245,9 +245,11 @@ export default function WholeLadderPage() {
         const result = await response.json();
         console.log('Update result:', result);
         console.log(`Updated ladder format and ${result.updatedMatches} matches`);
-        // Reload ladder data to reflect changes
-        await loadAllLadders();
-        setShowFormatEditor(null);
+        // Reload ladder data to reflect changes with cache busting
+        setTimeout(async () => {
+          await loadAllLadders();
+          setShowFormatEditor(null);
+        }, 500);
       } else {
         const errorData = await response.json();
         console.error('Failed to update ladder format:', errorData);

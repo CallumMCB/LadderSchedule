@@ -17,11 +17,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Update the ladder format
+    // Update the ladder format - ensure JSON field is properly handled
     const updatedLadder = await prisma.ladder.update({
       where: { id: ladderId },
-      data: { matchFormat: newMatchFormat }
+      data: { matchFormat: newMatchFormat as any }
     });
+    
+    console.log('Updated ladder:', updatedLadder);
 
     // Get all matches for this ladder
     const matches = await prisma.match.findMany({
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
           }
 
           // Update the match in database
-          await prisma.match.update({
+          const updatedMatch = await prisma.match.update({
             where: { id: match.id },
             data: {
               team1DetailedScore: team1Updated,
@@ -74,7 +76,10 @@ export async function POST(request: Request) {
           });
           
           updatedMatchCount++;
-          console.log(`Updated match ${match.id} in database`);
+          console.log(`Updated match ${match.id} in database:`, {
+            old: { team1: match.team1DetailedScore, team2: match.team2DetailedScore },
+            new: { team1: updatedMatch.team1DetailedScore, team2: updatedMatch.team2DetailedScore }
+          });
         } else if (newSets === 1 && (team1Updated || team2Updated)) {
           // Handle single score conversion to single set
           console.log(`Converting single scores: ${team1Updated} vs ${team2Updated}`);
