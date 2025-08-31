@@ -49,12 +49,10 @@ let displayMessage = `One-time password sent to your email!`;
 if (data.otp) {
 displayMessage += ` (Dev mode OTP: ${data.otp})`;
 }
-setMessage(displayMessage);
+setMessage(displayMessage + " Redirecting to reset password page...");
 setTimeout(() => {
-setShowForgotPassword(false);
-setMessage("");
-setForgotEmail("");
-}, 3000);
+window.location.href = `/reset-password?email=${encodeURIComponent(forgotEmail)}`;
+}, 2000);
 } else {
 const error = await response.json();
 setError(error.error || "Failed to send reset email");

@@ -1,15 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function ResetPasswordPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const searchParams = useSearchParams();
   
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,18 +18,24 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setError("No reset token provided");
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
     }
-  }, [token]);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
 
-    if (!token) {
-      setError("No reset token provided");
+    if (!email) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!otpCode) {
+      setError("OTP code is required");
       return;
     }
 
@@ -48,7 +55,7 @@ export default function ResetPasswordPage() {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword }),
+        body: JSON.stringify({ email, otpCode, newPassword }),
       });
 
       if (response.ok) {
@@ -67,30 +74,39 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!token) {
-    return (
-      <div className="max-w-md mx-auto mt-10">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <h2 className="text-xl font-semibold mb-4 text-red-600">Invalid Reset Link</h2>
-            <p className="text-muted-foreground mb-4">
-              The reset link is invalid or missing. Please request a new password reset.
-            </p>
-            <Button onClick={() => router.push('/login')}>
-              Back to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-md mx-auto mt-10">
       <Card>
         <CardContent className="p-6">
           <h2 className="text-xl font-semibold mb-4">Reset Your Password</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Enter the 6-digit code sent to your email along with your new password.
+          </p>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Email Address</label>
+              <Input 
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">6-Digit Code</label>
+              <Input 
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="Enter 6-digit code from email"
+                maxLength={6}
+                className="text-center text-lg tracking-widest"
+                required
+              />
+            </div>
+            
             <div>
               <label className="block text-sm font-medium mb-1">New Password</label>
               <Input 
@@ -128,7 +144,7 @@ export default function ResetPasswordPage() {
             <div className="flex gap-2">
               <Button 
                 type="submit" 
-                disabled={loading || !newPassword || !confirmPassword}
+                disabled={loading || !email || !otpCode || !newPassword || !confirmPassword}
                 className="flex-1"
               >
                 {loading ? "Resetting..." : "Reset Password"}
