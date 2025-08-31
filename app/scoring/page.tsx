@@ -63,6 +63,17 @@ export default function ScoringPage() {
     gamesPerSet: 6,
     winnerBy: 'sets' as 'sets' | 'games'
   });
+  const [showEditScoreModal, setShowEditScoreModal] = useState<{
+    matchId: string;
+    team1Name: string;
+    team2Name: string;
+    team1Color: string;
+    team2Color: string;
+  } | null>(null);
+  const [editingScores, setEditingScores] = useState<{
+    team1Score: string;
+    team2Score: string;
+  }>({ team1Score: "", team2Score: "" });
 
   useEffect(() => {
     if (session) {
@@ -501,6 +512,66 @@ export default function ScoringPage() {
     }
   }
 
+  function openEditScoreModal(matchId: string, team1: Team, team2: Team) {
+    const currentScores = scores[matchId] || { team1Score: "", team2Score: "" };
+    setEditingScores({
+      team1Score: currentScores.team1Score,
+      team2Score: currentScores.team2Score
+    });
+    setShowEditScoreModal({
+      matchId,
+      team1Name: getTeamDisplayName(team1),
+      team2Name: getTeamDisplayName(team2),
+      team1Color: team1.color,
+      team2Color: team2.color
+    });
+  }
+
+  function updateEditingSetScore(field: 'team1Score' | 'team2Score', setIndex: number, value: string) {
+    setEditingScores(prev => {
+      const currentScore = prev[field] || "";
+      const sets = currentScore.split(',');
+      
+      // Ensure we have enough set slots
+      while (sets.length < matchFormat.sets) {
+        sets.push("");
+      }
+      
+      sets[setIndex] = value;
+      
+      return {
+        ...prev,
+        [field]: sets.join(',')
+      };
+    });
+  }
+
+  function getEditingSetScore(scoreString: string, setIndex: number): string {
+    if (!scoreString) return "";
+    const sets = scoreString.split(',');
+    return sets[setIndex] || "";
+  }
+
+  async function saveEditedScores() {
+    if (!showEditScoreModal) return;
+
+    // Update the main scores state
+    setScores(prev => ({
+      ...prev,
+      [showEditScoreModal.matchId]: {
+        team1Score: editingScores.team1Score,
+        team2Score: editingScores.team2Score
+      }
+    }));
+
+    // Mark as unsaved
+    setUnsavedMatches(prev => new Set(prev).add(showEditScoreModal.matchId));
+
+    // Close modal
+    setShowEditScoreModal(null);
+    setEditingScores({ team1Score: "", team2Score: "" });
+  }
+
   async function scheduleMatch() {
     if (!showScheduleModal || !scheduleDate || !scheduleHour || !scheduleMinute) {
       setSaveMsg("Please select date, hour, and minute");
@@ -778,79 +849,60 @@ export default function ScoringPage() {
                           return (
                             <td key={colTeam.id} className="p-2">
                               <div className="flex justify-center">
-                                {/* Compact scoring table */}
-                                <table className="text-xs border-collapse">
-                                  <thead>
-                                    <tr>
-                                      <th className="w-4"></th>
-                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                        <th key={setIndex} className="text-center text-xs font-medium text-gray-600 px-1">
-                                          S{setIndex + 1}
-                                        </th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {/* Row team games */}
-                                    <tr>
-                                      <td className="pr-2 text-center">
-                                        <div 
-                                          className="w-2 h-2 rounded-full mx-auto"
-                                          style={{ backgroundColor: rowTeam.color }}
-                                        />
-                                      </td>
-                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                        <td key={setIndex}>
-                                          <Input
-                                            type="text"
-                                            value={getSetScore(rowTeamScore, setIndex)}
-                                            onChange={(e) => {
-                                              const value = e.target.value;
-                                              if (value === 'X' || value === 'x') {
-                                                updateSetScore(match.id, isRowTeamFirst ? 'team1Score' : 'team2Score', setIndex, 'X');
-                                              } else {
-                                                updateSetScore(match.id, isRowTeamFirst ? 'team1Score' : 'team2Score', setIndex, value);
-                                              }
-                                            }}
-                                            className="w-9 h-5 text-center text-xs border"
-                                            placeholder="0"
-                                            disabled={getSetScore(rowTeamScore, setIndex) === 'X'}
+                                {/* Clickable scoring table */}
+                                <div
+                                  onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
+                                  className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
+                                  title="Click to edit scores"
+                                >
+                                  <table className="text-xs border-collapse">
+                                    <thead>
+                                      <tr>
+                                        <th className="w-4"></th>
+                                        {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                          <th key={setIndex} className="text-center text-xs font-medium text-gray-600 px-1">
+                                            S{setIndex + 1}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {/* Row team games */}
+                                      <tr>
+                                        <td className="pr-2 text-center">
+                                          <div 
+                                            className="w-2 h-2 rounded-full mx-auto"
+                                            style={{ backgroundColor: rowTeam.color }}
                                           />
                                         </td>
-                                      ))}
-                                    </tr>
-                                    
-                                    {/* Column team games */}
-                                    <tr>
-                                      <td className="pr-2 text-center">
-                                        <div 
-                                          className="w-2 h-2 rounded-full mx-auto"
-                                          style={{ backgroundColor: colTeam.color }}
-                                        />
-                                      </td>
-                                      {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
-                                        <td key={setIndex}>
-                                          <Input
-                                            type="text"
-                                            value={getSetScore(colTeamScore, setIndex)}
-                                            onChange={(e) => {
-                                              const value = e.target.value;
-                                              if (value === 'X' || value === 'x') {
-                                                updateSetScore(match.id, isRowTeamFirst ? 'team2Score' : 'team1Score', setIndex, 'X');
-                                              } else {
-                                                updateSetScore(match.id, isRowTeamFirst ? 'team2Score' : 'team1Score', setIndex, value);
-                                              }
-                                            }}
-                                            className="w-9 h-5 text-center text-xs border"
-                                            placeholder="0"
-                                            disabled={getSetScore(colTeamScore, setIndex) === 'X'}
+                                        {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                          <td key={setIndex}>
+                                            <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
+                                              {getSetScore(rowTeamScore, setIndex) || '0'}
+                                            </div>
+                                          </td>
+                                        ))}
+                                      </tr>
+                                      
+                                      {/* Column team games */}
+                                      <tr>
+                                        <td className="pr-2 text-center">
+                                          <div 
+                                            className="w-2 h-2 rounded-full mx-auto"
+                                            style={{ backgroundColor: colTeam.color }}
                                           />
                                         </td>
-                                      ))}
-                                    </tr>
-                                  </tbody>
-                                </table>
-                                
+                                        {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                                          <td key={setIndex}>
+                                            <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
+                                              {getSetScore(colTeamScore, setIndex) || '0'}
+                                            </div>
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
                             </td>
                           );
@@ -1383,6 +1435,118 @@ export default function ScoringPage() {
                 }}
               >
                 Save Format
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Score Modal */}
+      {showEditScoreModal && (
+        <div className="fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50" 
+            onClick={() => {
+              setShowEditScoreModal(null);
+              setEditingScores({ team1Score: "", team2Score: "" });
+            }}
+          />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-6 w-96 max-w-full">
+            <h3 className="text-lg font-semibold mb-4">Edit Match Score</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              <span 
+                className="inline-block w-3 h-3 rounded-full mr-2"
+                style={{ backgroundColor: showEditScoreModal.team1Color }}
+              />
+              {showEditScoreModal.team1Name}
+              <span className="mx-2">vs</span>
+              <span 
+                className="inline-block w-3 h-3 rounded-full mr-2"
+                style={{ backgroundColor: showEditScoreModal.team2Color }}
+              />
+              {showEditScoreModal.team2Name}
+            </p>
+            
+            <div className="space-y-4">
+              {Array.from({ length: matchFormat.sets }, (_, setIndex) => (
+                <div key={setIndex} className="border rounded-lg p-3">
+                  <div className="text-sm font-medium mb-2">Set {setIndex + 1}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: showEditScoreModal.team1Color }}
+                        />
+                        <span className="text-sm font-medium">
+                          {showEditScoreModal.team1Name.length > 20 
+                            ? showEditScoreModal.team1Name.substring(0, 20) + '...'
+                            : showEditScoreModal.team1Name}
+                        </span>
+                      </div>
+                      <select
+                        value={getEditingSetScore(editingScores.team1Score, setIndex)}
+                        onChange={(e) => updateEditingSetScore('team1Score', setIndex, e.target.value)}
+                        className="w-full p-2 border rounded-lg text-sm"
+                      >
+                        <option value="">-</option>
+                        <option value="X">X (Not played)</option>
+                        {Array.from({ length: matchFormat.gamesPerSet + 2 }, (_, i) => (
+                          <option key={i} value={i.toString()}>{i}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: showEditScoreModal.team2Color }}
+                        />
+                        <span className="text-sm font-medium">
+                          {showEditScoreModal.team2Name.length > 20 
+                            ? showEditScoreModal.team2Name.substring(0, 20) + '...'
+                            : showEditScoreModal.team2Name}
+                        </span>
+                      </div>
+                      <select
+                        value={getEditingSetScore(editingScores.team2Score, setIndex)}
+                        onChange={(e) => updateEditingSetScore('team2Score', setIndex, e.target.value)}
+                        className="w-full p-2 border rounded-lg text-sm"
+                      >
+                        <option value="">-</option>
+                        <option value="X">X (Not played)</option>
+                        {Array.from({ length: matchFormat.gamesPerSet + 2 }, (_, i) => (
+                          <option key={i} value={i.toString()}>{i}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <div className="font-medium text-blue-900 mb-1">Current Format:</div>
+                <div className="text-blue-800">
+                  {matchFormat.sets === 1 ? '1 Set' : `Best of ${matchFormat.sets} Sets`} • {matchFormat.gamesPerSet} Games per Set
+                  <br />
+                  Winner: {matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditScoreModal(null);
+                  setEditingScores({ team1Score: "", team2Score: "" });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveEditedScores}>
+                Save Score
               </Button>
             </div>
           </div>
