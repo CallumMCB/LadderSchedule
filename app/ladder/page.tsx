@@ -213,19 +213,17 @@ export default function WholeLadderPage() {
     return `Ladder ${currentLadderNumber}`;
   }
 
-  function calculateMovement(currentLadder: LadderData, position: number, totalTeams: number, allLadders: LadderData[]): string {
+  function calculateMovementWithDestination(currentLadder: LadderData, position: number, totalTeams: number, allLadders: LadderData[]): string {
     const currentLadderNumber = currentLadder.number;
     const nextLadder = calculateNextLadder(currentLadder, position, totalTeams, allLadders);
     const nextLadderNumber = parseInt(nextLadder.replace('Ladder ', ''));
     
     if (nextLadderNumber === currentLadderNumber) {
-      return '—'; // Stay in same ladder
+      return `— Ladder ${currentLadderNumber}`; // Stay in same ladder
     } else if (nextLadderNumber < currentLadderNumber) {
-      const movement = currentLadderNumber - nextLadderNumber;
-      return `⬆️ ${movement}`;
+      return `⬆️ Ladder ${nextLadderNumber}`;
     } else {
-      const movement = nextLadderNumber - currentLadderNumber;
-      return `⬇️ ${movement}`;
+      return `⬇️ Ladder ${nextLadderNumber}`;
     }
   }
 
@@ -358,8 +356,7 @@ export default function WholeLadderPage() {
                             <th className="p-3 text-center font-medium">Matches Lost</th>
                             <th className="p-3 text-center font-medium">Win %</th>
                             <th className="p-3 text-center font-medium">Games Won</th>
-                            <th className="p-3 text-center font-medium">Movement</th>
-                            <th className="p-3 text-center font-medium">Next Ladder</th>
+                            <th className="p-3 text-center font-medium">Next Season</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -399,11 +396,8 @@ export default function WholeLadderPage() {
                               <td className="p-3 text-center">
                                 {standing.gamesWon}
                               </td>
-                              <td className="p-3 text-center text-lg">
-                                {calculateMovement(ladder, index + 1, standings.length, ladders)}
-                              </td>
-                              <td className="p-3 text-center font-medium">
-                                {calculateNextLadder(ladder, index + 1, standings.length, ladders)}
+                              <td className="p-3 text-center font-medium text-sm">
+                                {calculateMovementWithDestination(ladder, index + 1, standings.length, ladders)}
                               </td>
                             </tr>
                           ))}
