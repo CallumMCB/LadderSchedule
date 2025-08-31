@@ -36,38 +36,62 @@ export async function POST(request: Request) {
     const newSets = newMatchFormat.sets;
     let updatedMatchCount = 0;
     
-    for (const match of matches) {
-      if (match.team1DetailedScore || match.team2DetailedScore) {
+    // Use transaction to ensure all updates succeed or fail together
+    const updateResults = await prisma.$transaction(async (tx) => {
+      const results = [];
+      
+      for (const match of matches) {
+        // Only process matches that have scores
+        if (!match.team1DetailedScore && !match.team2DetailedScore) {
+          continue;
+        }
+
         console.log(`Processing match ${match.id}: ${match.team1DetailedScore} vs ${match.team2DetailedScore}`);
         
         let team1Updated = match.team1DetailedScore || '';
         let team2Updated = match.team2DetailedScore || '';
+        let needsUpdate = false;
 
+        // Handle set-based scores (comma-separated)
         if (team1Updated.includes(',') || team2Updated.includes(',')) {
-          // Handle set-based scores
           const team1Sets = team1Updated.split(',').map(s => s.trim());
           const team2Sets = team2Updated.split(',').map(s => s.trim());
+          const currentSets = Math.max(team1Sets.length, team2Sets.length);
 
           console.log(`Current sets: Team1 [${team1Sets.join(',')}] vs Team2 [${team2Sets.join(',')}]`);
 
-          if (newSets < team1Sets.length) {
-            // Shorten to new number of sets
-            team1Updated = team1Sets.slice(0, newSets).join(',');
-            team2Updated = team2Sets.slice(0, newSets).join(',');
-            console.log(`Shortened to: ${team1Updated} vs ${team2Updated}`);
-          } else if (newSets > team1Sets.length) {
-            // Extend with X for unplayed sets
-            const currentSets = team1Sets.length;
-            const additionalSets = newSets - currentSets;
-            const newEmptySets = Array(additionalSets).fill('X');
+          if (newSets !== currentSets) {
+            needsUpdate = true;
             
-            team1Updated = [...team1Sets, ...newEmptySets].join(',');
-            team2Updated = [...team2Sets, ...newEmptySets].join(',');
-            console.log(`Extended to: ${team1Updated} vs ${team2Updated}`);
+            if (newSets < currentSets) {
+              // Shorten to new number of sets
+              team1Updated = team1Sets.slice(0, newSets).join(',');
+              team2Updated = team2Sets.slice(0, newSets).join(',');
+              console.log(`Shortened to: ${team1Updated} vs ${team2Updated}`);
+            } else {
+              // Extend with X for unplayed sets
+              const additionalSets = newSets - currentSets;
+              const newEmptySets = Array(additionalSets).fill('X');
+              
+              team1Updated = [...team1Sets, ...newEmptySets].join(',');
+              team2Updated = [...team2Sets, ...newEmptySets].join(',');
+              console.log(`Extended to: ${team1Updated} vs ${team2Updated}`);
+            }
           }
+        } else if (newSets > 1 && (team1Updated || team2Updated)) {
+          // Convert single scores to multi-set format
+          needsUpdate = true;
+          const additionalSets = newSets - 1;
+          const newEmptySets = Array(additionalSets).fill('X');
+          
+          team1Updated = [team1Updated, ...newEmptySets].join(',');
+          team2Updated = [team2Updated, ...newEmptySets].join(',');
+          console.log(`Converted single to multi-set: ${team1Updated} vs ${team2Updated}`);
+        }
 
-          // Update the match in database
-          const updatedMatch = await prisma.match.update({
+        // Only update if changes are needed
+        if (needsUpdate) {
+          const updatedMatch = await tx.match.update({
             where: { id: match.id },
             data: {
               team1DetailedScore: team1Updated,
@@ -75,19 +99,23 @@ export async function POST(request: Request) {
             }
           });
           
-          updatedMatchCount++;
+          results.push({
+            matchId: match.id,
+            old: { team1: match.team1DetailedScore, team2: match.team2DetailedScore },
+            new: { team1: updatedMatch.team1DetailedScore, team2: updatedMatch.team2DetailedScore }
+          });
+          
           console.log(`Updated match ${match.id} in database:`, {
             old: { team1: match.team1DetailedScore, team2: match.team2DetailedScore },
             new: { team1: updatedMatch.team1DetailedScore, team2: updatedMatch.team2DetailedScore }
           });
-        } else if (newSets === 1 && (team1Updated || team2Updated)) {
-          // Handle single score conversion to single set
-          console.log(`Converting single scores: ${team1Updated} vs ${team2Updated}`);
-          // Keep as is for single set format
-          updatedMatchCount++;
         }
       }
-    }
+      
+      return results;
+    });
+
+    updatedMatchCount = updateResults.length;
 
     console.log(`Successfully updated ${updatedMatchCount} matches`);
     
