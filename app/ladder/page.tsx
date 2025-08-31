@@ -163,6 +163,56 @@ export default function WholeLadderPage() {
     });
   }
 
+  function calculateNextLadder(currentLadder: LadderData, position: number, totalTeams: number, allLadders: LadderData[]): string {
+    const currentLadderNumber = currentLadder.number;
+    const sortedLadders = [...allLadders].sort((a, b) => a.number - b.number);
+    
+    // Special case: only 3 teams
+    if (totalTeams === 3) {
+      if (position === 1) {
+        // 1st place goes up 1 ladder
+        const targetLadder = sortedLadders.find(l => l.number === currentLadderNumber - 1);
+        return targetLadder ? `Ladder ${targetLadder.number}` : `Ladder ${currentLadderNumber}`;
+      } else if (position === 3) {
+        // Last place goes down 1 ladder
+        const targetLadder = sortedLadders.find(l => l.number === currentLadderNumber + 1);
+        return targetLadder ? `Ladder ${targetLadder.number}` : `Ladder ${currentLadderNumber}`;
+      }
+      // 2nd place stays
+      return `Ladder ${currentLadderNumber}`;
+    }
+
+    // Regular logic for 4+ teams
+    if (position === 1) {
+      // 1st place: go up 2 ladders if possible
+      const targetNumber = Math.max(1, currentLadderNumber - 2);
+      const availableLadders = sortedLadders.filter(l => l.number < currentLadderNumber);
+      if (availableLadders.length === 0) return `Ladder ${currentLadderNumber}`;
+      
+      const targetLadder = availableLadders.find(l => l.number === targetNumber) || availableLadders[0];
+      return `Ladder ${targetLadder.number}`;
+    } else if (position === 2) {
+      // 2nd place: go up 1 ladder if possible
+      const targetLadder = sortedLadders.find(l => l.number === currentLadderNumber - 1);
+      return targetLadder ? `Ladder ${targetLadder.number}` : `Ladder ${currentLadderNumber}`;
+    } else if (position === totalTeams) {
+      // Last place: go down 2 ladders if possible
+      const availableLadders = sortedLadders.filter(l => l.number > currentLadderNumber);
+      if (availableLadders.length === 0) return `Ladder ${currentLadderNumber}`;
+      
+      const targetNumber = currentLadderNumber + 2;
+      const targetLadder = availableLadders.find(l => l.number === targetNumber) || availableLadders[availableLadders.length - 1];
+      return `Ladder ${targetLadder.number}`;
+    } else if (position === totalTeams - 1) {
+      // Second last: go down 1 ladder if possible
+      const targetLadder = sortedLadders.find(l => l.number === currentLadderNumber + 1);
+      return targetLadder ? `Ladder ${targetLadder.number}` : `Ladder ${currentLadderNumber}`;
+    }
+
+    // Everyone else stays
+    return `Ladder ${currentLadderNumber}`;
+  }
+
   function getMatchBetweenTeams(team1Id: string, team2Id: string, matches: Match[]): Match | undefined {
     return matches.find(match => 
       (match.team1Id === team1Id && match.team2Id === team2Id) ||
@@ -292,6 +342,7 @@ export default function WholeLadderPage() {
                             <th className="p-3 text-center font-medium">Matches Lost</th>
                             <th className="p-3 text-center font-medium">Win %</th>
                             <th className="p-3 text-center font-medium">Games Won</th>
+                            <th className="p-3 text-center font-medium">Next Ladder</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -330,6 +381,9 @@ export default function WholeLadderPage() {
                               </td>
                               <td className="p-3 text-center">
                                 {standing.gamesWon}
+                              </td>
+                              <td className="p-3 text-center font-medium">
+                                {calculateNextLadder(ladder, index + 1, standings.length, ladders)}
                               </td>
                             </tr>
                           ))}
