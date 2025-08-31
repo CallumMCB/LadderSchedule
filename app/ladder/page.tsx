@@ -222,13 +222,17 @@ export default function WholeLadderPage() {
 
   async function updateLadderFormat(ladderId: string, newSets: number) {
     try {
-      console.log(`Updating ladder ${ladderId} to ${newSets} sets`);
+      console.log(`[FRONTEND] Updating ladder ${ladderId} to ${newSets} sets`);
+      console.log(`[FRONTEND] Button clicked for ${newSets} sets`);
       
       const newMatchFormat = {
         sets: newSets,
         gamesPerSet: 6,
         winnerBy: "sets"
       };
+
+      console.log(`[FRONTEND] Sending API request to update ladder format`);
+      console.log(`[FRONTEND] Request data:`, { ladderId, newMatchFormat });
 
       const response = await fetch('/api/ladders/update-format', {
         method: 'POST',
@@ -239,7 +243,8 @@ export default function WholeLadderPage() {
         })
       });
 
-      console.log('Response status:', response.status);
+      console.log(`[FRONTEND] Response status:`, response.status);
+      console.log(`[FRONTEND] Response ok:`, response.ok);
       
       if (response.ok) {
         const result = await response.json();
