@@ -555,21 +555,105 @@ export default function ScoringPage() {
   async function saveEditedScores() {
     if (!showEditScoreModal) return;
 
-    // Update the main scores state
-    setScores(prev => ({
-      ...prev,
-      [showEditScoreModal.matchId]: {
-        team1Score: editingScores.team1Score,
-        team2Score: editingScores.team2Score
+    try {
+      const scoreData = editingScores;
+      const matchId = showEditScoreModal.matchId;
+
+      // Check if we have valid scores to save
+      const hasValidScore = scoreData.team1Score !== "" && scoreData.team2Score !== "";
+      const hasValidSetScore = (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) &&
+        scoreData.team1Score.split(',').some(s => s !== "" && s !== "X") && 
+        scoreData.team2Score.split(',').some(s => s !== "" && s !== "X");
+      
+      if (!hasValidScore && !hasValidSetScore) {
+        setSaveMsg("Please enter valid scores");
+        setTimeout(() => setSaveMsg(""), 2000);
+        return;
       }
-    }));
 
-    // Mark as unsaved
-    setUnsavedMatches(prev => new Set(prev).add(showEditScoreModal.matchId));
+      let finalTeam1Score: string | number;
+      let finalTeam2Score: string | number;
+      let detailedTeam1Score: string | undefined = undefined;
+      let detailedTeam2Score: string | undefined = undefined;
+      
+      if (scoreData.team1Score.includes(',') || scoreData.team2Score.includes(',')) {
+        // Set-based scoring - preserve the format and auto-fill X for decided matches
+        const calculated = calculateFinalScores(scoreData.team1Score, scoreData.team2Score);
+        
+        // Store detailed scores
+        detailedTeam1Score = calculated.team1Score;
+        detailedTeam2Score = calculated.team2Score;
+        
+        if (matchFormat.winnerBy === 'sets') {
+          // Store sets won as final score
+          finalTeam1Score = calculated.team1SetsWon;
+          finalTeam2Score = calculated.team2SetsWon;
+        } else {
+          // Store total games as final score
+          const team1Games = calculated.team1Score.split(',')
+            .filter(s => s !== 'X' && s !== '')
+            .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+          const team2Games = calculated.team2Score.split(',')
+            .filter(s => s !== 'X' && s !== '')
+            .reduce((sum, games) => sum + (parseInt(games) || 0), 0);
+          finalTeam1Score = team1Games;
+          finalTeam2Score = team2Games;
+        }
+      } else {
+        // Single score format
+        finalTeam1Score = parseInt(scoreData.team1Score) || 0;
+        finalTeam2Score = parseInt(scoreData.team2Score) || 0;
+      }
 
-    // Close modal
-    setShowEditScoreModal(null);
-    setEditingScores({ team1Score: "", team2Score: "" });
+      const scoreToSave = {
+        matchId,
+        team1Score: finalTeam1Score,
+        team2Score: finalTeam2Score,
+        team1DetailedScore: detailedTeam1Score,
+        team2DetailedScore: detailedTeam2Score
+      };
+
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scores: [scoreToSave] }),
+      });
+
+      if (response.ok) {
+        // Update the main scores state with the edited values
+        setScores(prev => ({
+          ...prev,
+          [matchId]: {
+            team1Score: detailedTeam1Score || scoreData.team1Score,
+            team2Score: detailedTeam2Score || scoreData.team2Score
+          }
+        }));
+
+        // Remove from unsaved matches since we just saved
+        setUnsavedMatches(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(matchId);
+          return newSet;
+        });
+
+        setSaveMsg("Score saved!");
+        setTimeout(() => setSaveMsg(""), 2000);
+
+        // Close modal
+        setShowEditScoreModal(null);
+        setEditingScores({ team1Score: "", team2Score: "" });
+
+        // Optionally reload data to ensure consistency
+        await loadTeamsAndMatches();
+      } else {
+        const error = await response.json();
+        setSaveMsg(error.error || "Failed to save score");
+        setTimeout(() => setSaveMsg(""), 3000);
+      }
+    } catch (error) {
+      setSaveMsg("Network error");
+      setTimeout(() => setSaveMsg(""), 3000);
+    }
   }
 
   async function scheduleMatch() {
