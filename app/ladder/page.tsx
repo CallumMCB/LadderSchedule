@@ -172,6 +172,27 @@ export default function WholeLadderPage() {
     return results;
   }
 
+  function getHeadToHeadResult(team1Id: string, team2Id: string, matches: Match[]): number {
+    // Returns 1 if team1 won, -1 if team2 won, 0 if no match or tied
+    const match = matches.find(match => 
+      match.completed &&
+      ((match.team1Id === team1Id && match.team2Id === team2Id) ||
+       (match.team1Id === team2Id && match.team2Id === team1Id)) &&
+      match.team1Score !== null && match.team1Score !== undefined &&
+      match.team2Score !== null && match.team2Score !== undefined
+    );
+
+    if (!match) return 0;
+
+    const isTeam1First = match.team1Id === team1Id;
+    const team1Score = isTeam1First ? match.team1Score! : match.team2Score!;
+    const team2Score = isTeam1First ? match.team2Score! : match.team1Score!;
+
+    if (team1Score > team2Score) return 1;
+    if (team2Score > team1Score) return -1;
+    return 0;
+  }
+
   function getLadderStandings(ladder: LadderData) {
     const standings = ladder.teams.map(team => {
       const results = getTeamResults(team.id, ladder.matches, ladder.teams, ladder.matchFormat);
@@ -182,10 +203,25 @@ export default function WholeLadderPage() {
       };
     });
 
-    // Sort by wins (descending), then by win percentage
+    // Sort based on match format
     return standings.sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.winPercentage - a.winPercentage;
+      if (ladder.matchFormat?.winnerBy === 'games') {
+        // Games-based format: Sort by total games won, then by matches won, then by head-to-head
+        if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        // Head-to-head tie-breaker
+        const headToHead = getHeadToHeadResult(a.team.id, b.team.id, ladder.matches);
+        if (headToHead !== 0) return headToHead;
+        return b.winPercentage - a.winPercentage;
+      } else {
+        // Sets-based format: Sort by matches won, then by sets won, then by head-to-head
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.setsWon !== a.setsWon) return b.setsWon - a.setsWon;
+        // Head-to-head tie-breaker
+        const headToHead = getHeadToHeadResult(a.team.id, b.team.id, ladder.matches);
+        if (headToHead !== 0) return headToHead;
+        return b.winPercentage - a.winPercentage;
+      }
     });
   }
 
