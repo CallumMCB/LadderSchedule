@@ -292,7 +292,6 @@ export default function WholeLadderPage() {
                             <th className="p-3 text-center font-medium">Matches Lost</th>
                             <th className="p-3 text-center font-medium">Win %</th>
                             <th className="p-3 text-center font-medium">Games Won</th>
-                            <th className="p-3 text-center font-medium">Total Games</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -331,9 +330,6 @@ export default function WholeLadderPage() {
                               </td>
                               <td className="p-3 text-center">
                                 {standing.gamesWon}
-                              </td>
-                              <td className="p-3 text-center">
-                                {standing.totalGames}
                               </td>
                             </tr>
                           ))}
