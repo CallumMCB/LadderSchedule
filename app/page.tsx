@@ -1337,11 +1337,17 @@ export default function TennisLadderScheduler() {
         </div>
       )}
 
+      {/* Help Button */}
+      <div className="flex justify-center sm:justify-start">
+        <a href="/help" className="text-blue-600 hover:underline text-sm">
+          Need help? View the visual guide →
+        </a>
+      </div>
+
       {/* Teams Display */}
       {teamsData.teams.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-lg font-semibold mb-3">All Teams</h3>
             <div className="flex flex-wrap gap-3">
               {teamsData.teams.map((team) => (
                 <div 
@@ -1488,9 +1494,6 @@ export default function TennisLadderScheduler() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
-          <a href="/help" className="text-blue-600 hover:underline">
-            Need help? View the visual guide →
-          </a>
           {isBlockSelectMode && (
             <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 rounded">
               <span className="text-blue-800 font-medium">Block Select Mode</span>
@@ -2729,7 +2732,7 @@ function AvailabilityGrid({
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="sticky left-0 bg-white/80 backdrop-blur border p-2 text-left">Time</th>
+            <th className="bg-white border p-2 text-left">Time</th>
             {days.map((d, i) => {
               const dayOfWeek = d.getDay();
               const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
@@ -2764,7 +2767,7 @@ function AvailabilityGrid({
               const r0 = hourIndex * 2;
               rows.push(
                 <tr key={`${hour}-00`} className="odd:bg-muted/20">
-                  <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel0}</td>
+                  <td className="bg-white border p-2 align-top text-sm font-medium">{rowLabel0}</td>
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute0);
                     return (
@@ -2782,7 +2785,7 @@ function AvailabilityGrid({
               const r30 = hourIndex * 2 + 1;
               rows.push(
                 <tr key={`${hour}-30`} className="odd:bg-muted/20">
-                  <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel30}</td>
+                  <td className="bg-white border p-2 align-top text-sm font-medium">{rowLabel30}</td>
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute30);
                     return (
