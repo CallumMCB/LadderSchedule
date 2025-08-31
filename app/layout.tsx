@@ -31,7 +31,7 @@ return (
 {/* Mobile Navigation */}
 {session && <MobileNav />}
 
-<div className="flex gap-4">
+<div className="hidden md:flex gap-4">
 {session ? (
 <>
 <Link href="/help" className="text-sm underline">Help</Link>

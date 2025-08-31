@@ -9,14 +9,16 @@ export default function MobileNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "Calendar" },
-    { href: "/opponents", label: "Opponents" },
-    { href: "/scoring", label: "Scoring" },
-    { href: "/ladder", label: "Whole Ladder" },
+    { href: "/", label: "Calendar", emoji: "📅" },
+    { href: "/opponents", label: "Opponents", emoji: "🤝" },
+    { href: "/scoring", label: "Scoring", emoji: "🏆" },
+    { href: "/ladder", label: "Whole Ladder", emoji: "📊" },
+    { href: "/profile", label: "Profile", emoji: "👤" },
+    { href: "/help", label: "Help", emoji: "❓" },
   ];
 
   return (
-    <div className="md:hidden absolute left-1/2 transform -translate-x-1/2">
+    <div className="md:hidden absolute right-0">
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -37,21 +39,34 @@ export default function MobileNav() {
           />
           
           {/* Menu */}
-          <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg border py-2 z-50 min-w-[160px]">
+          <div className="absolute top-full mt-2 right-0 bg-white rounded-lg shadow-lg border py-2 z-50 min-w-[180px]">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`block px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                className={`flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
                   pathname === item.href 
                     ? 'text-blue-600 font-medium bg-blue-50' 
                     : 'text-gray-700'
                 }`}
               >
+                <span className="text-base">{item.emoji}</span>
                 {item.label}
               </Link>
             ))}
+            
+            {/* Divider */}
+            <div className="border-t my-2"></div>
+            
+            {/* Logout */}
+            <a
+              href="/api/auth/signout"
+              className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <span className="text-base">🚪</span>
+              Log Out
+            </a>
           </div>
         </>
       )}
