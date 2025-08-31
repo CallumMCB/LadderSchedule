@@ -10,6 +10,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 async function sendOTPEmail(email: string, name: string, otp: string) {
   console.log(`🔄 Attempting to send email to: ${email}`);
   console.log(`🔑 Resend API key configured: ${!!process.env.RESEND_API_KEY}`);
+  console.log(`🔑 API key starts with: ${process.env.RESEND_API_KEY?.substring(0, 8)}...`);
   
   try {
     if (!resend) {
@@ -36,7 +37,13 @@ async function sendOTPEmail(email: string, name: string, otp: string) {
       text: `Hi ${name},\n\nYour one-time password for resetting your Tennis Ladder account is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this, please ignore this email.\n\nBest regards,\nTennis Ladder Team`
     });
     
-    console.log(`✅ Email sent successfully to ${email}. Resend ID:`, result.data?.id);
+    console.log(`✅ Email sent successfully to ${email}`);
+    console.log('📧 Resend response:', JSON.stringify(result, null, 2));
+    
+    if (result.error) {
+      throw new Error(`Resend API error: ${JSON.stringify(result.error)}`);
+    }
+    
     return result;
   } catch (error) {
     console.error('❌ Failed to send email:', error);
