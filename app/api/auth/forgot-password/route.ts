@@ -18,7 +18,7 @@ async function sendOTPEmail(email: string, name: string, otp: string) {
     }
     
     const result = await resend.emails.send({
-      from: 'Tennis Ladder <onboarding@resend.dev>', // Use onboarding@resend.dev which is more reliable
+      from: 'Tennis Ladder <noreply@ladderschedule.com>',
       to: [email],
       subject: 'Your Tennis Ladder Password Reset Code',
       html: `
