@@ -11,6 +11,7 @@ const [error, setError] = useState("");
 const [showForgotPassword, setShowForgotPassword] = useState(false);
 const [forgotEmail, setForgotEmail] = useState("");
 const [message, setMessage] = useState("");
+const [resetMethod, setResetMethod] = useState<'email' | 'sms'>('email');
 
 async function onSubmit(e: React.FormEvent) {
 e.preventDefault();
@@ -39,11 +40,11 @@ try {
 const response = await fetch('/api/auth/forgot-password', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ email: forgotEmail }),
+body: JSON.stringify({ email: forgotEmail, method: resetMethod }),
 });
 
 if (response.ok) {
-setMessage("Password reset link sent to your email!");
+setMessage(`One-time password sent to your ${resetMethod}!`);
 setTimeout(() => {
 setShowForgotPassword(false);
 setMessage("");
@@ -93,8 +94,37 @@ Register here
 <>
 <form onSubmit={handleForgotPassword} className="space-y-3">
 <p className="text-sm text-gray-600 mb-4">
-Enter your email address and we'll send you a password reset link.
+Choose how you'd like to receive your one-time password.
 </p>
+
+<div className="space-y-2">
+<label className="block text-sm font-medium">Reset Method</label>
+<div className="flex gap-4">
+<label className="flex items-center">
+<input 
+type="radio" 
+name="resetMethod" 
+value="email" 
+checked={resetMethod === 'email'}
+onChange={(e) => setResetMethod(e.target.value as 'email' | 'sms')}
+className="mr-2"
+/>
+Email
+</label>
+<label className="flex items-center">
+<input 
+type="radio" 
+name="resetMethod" 
+value="sms" 
+checked={resetMethod === 'sms'}
+onChange={(e) => setResetMethod(e.target.value as 'email' | 'sms')}
+className="mr-2"
+/>
+SMS
+</label>
+</div>
+</div>
+
 <label className="block text-sm">Email</label>
 <Input 
 value={forgotEmail} 
@@ -105,7 +135,7 @@ type="email"
 {error && <div className="text-sm text-red-600">{error}</div>}
 {message && <div className="text-sm text-green-600">{message}</div>}
 <div className="pt-2 flex gap-2">
-<Button type="submit" className="flex-1">Send Reset Link</Button>
+<Button type="submit" className="flex-1">Send OTP</Button>
 <Button 
 type="button" 
 variant="outline" 

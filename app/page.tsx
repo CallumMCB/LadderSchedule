@@ -1525,7 +1525,7 @@ export default function TennisLadderScheduler() {
       </div>
 
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
           {isBlockSelectMode && (
             <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 rounded">
@@ -1537,14 +1537,14 @@ export default function TennisLadderScheduler() {
             </div>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
-          <span className="text-gray-600 hidden sm:inline">Show times:</span>
+        <div className="flex flex-row items-center gap-3 text-sm">
+          <span className="text-gray-600 whitespace-nowrap">Show times:</span>
           <div className="flex gap-2">
             <Button
               variant={showEarlyTimes ? "default" : "outline"}
               size="sm"
               onClick={() => setShowEarlyTimes(!showEarlyTimes)}
-              className="text-xs flex-1 sm:flex-initial"
+              className="text-xs"
             >
               {showEarlyTimes ? "Hide" : "Show"} early
             </Button>
@@ -1552,7 +1552,7 @@ export default function TennisLadderScheduler() {
               variant={showLateTimes ? "default" : "outline"}
               size="sm"
               onClick={() => setShowLateTimes(!showLateTimes)}
-              className="text-xs flex-1 sm:flex-initial"
+              className="text-xs"
             >
               {showLateTimes ? "Hide" : "Show"} late
             </Button>

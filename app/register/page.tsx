@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [notificationPreference, setNotificationPreference] = useState("email");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, phone, password }),
+        body: JSON.stringify({ email, name, phone, password, notificationPreference }),
       });
 
       if (response.ok) {
@@ -85,6 +86,37 @@ export default function RegisterPage() {
                 onChange={e => setPhone(e.target.value)} 
                 placeholder="+1 (555) 123-4567" 
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Notification Preference</label>
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="notificationPreference" 
+                    value="email" 
+                    checked={notificationPreference === 'email'}
+                    onChange={(e) => setNotificationPreference(e.target.value)}
+                    className="mr-2"
+                  />
+                  Email
+                </label>
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="notificationPreference" 
+                    value="sms" 
+                    checked={notificationPreference === 'sms'}
+                    onChange={(e) => setNotificationPreference(e.target.value)}
+                    className="mr-2"
+                  />
+                  SMS
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Choose how you'd like to receive notifications. SMS requires a phone number.
+              </p>
             </div>
             
             <div>

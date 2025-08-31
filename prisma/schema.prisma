@@ -15,6 +15,9 @@ password String // hashed (bcrypt)
 phone String? // Contact phone number
 resetToken String? // Password reset token
 resetTokenExpiry DateTime? // Token expiry time
+otpCode String? // One-time password code
+otpExpiry DateTime? // OTP expiry time
+notificationPreference String @default("email") // "email" or "sms"
 
 // Partner link (one-to-one). Unique helps avoid being linked to multiple partners.
 partnerId String? @unique
