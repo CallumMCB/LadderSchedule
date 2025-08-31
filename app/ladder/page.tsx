@@ -45,6 +45,7 @@ export default function WholeLadderPage() {
   const [ladders, setLadders] = useState<LadderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'summary' | 'scores'>('summary');
+  const [showFormatEditor, setShowFormatEditor] = useState<string | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -80,6 +81,7 @@ export default function WholeLadderPage() {
       });
 
       const laddersWithData = await Promise.all(ladderPromises);
+      console.log('Ladder data:', laddersWithData[0]); // Debug log
       setLadders(laddersWithData);
     } catch (error) {
       console.error("Failed to load ladder data:", error);
@@ -218,6 +220,37 @@ export default function WholeLadderPage() {
     return `Ladder ${currentLadderNumber}`;
   }
 
+  async function updateLadderFormat(ladderId: string, newSets: number) {
+    try {
+      const newMatchFormat = {
+        sets: newSets,
+        gamesPerSet: 6,
+        winnerBy: "sets"
+      };
+
+      const response = await fetch('/api/ladders/update-format', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ladderId,
+          newMatchFormat
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Updated ladder format and ${result.updatedMatches} matches`);
+        // Reload ladder data to reflect changes
+        loadAllLadders();
+        setShowFormatEditor(null);
+      } else {
+        console.error('Failed to update ladder format');
+      }
+    } catch (error) {
+      console.error('Error updating ladder format:', error);
+    }
+  }
+
   function calculateMovementWithDestination(currentLadder: LadderData, position: number, totalTeams: number, allLadders: LadderData[]): string {
     const currentLadderNumber = currentLadder.number;
     const nextLadder = calculateNextLadder(currentLadder, position, totalTeams, allLadders);
@@ -341,9 +374,43 @@ export default function WholeLadderPage() {
                       <h2 className="text-2xl font-semibold">{ladder.name}</h2>
                       <p className="text-sm text-muted-foreground">
                         Ends: {new Date(ladder.endDate).toLocaleDateString()} • {ladder.teams.length} teams • {ladder.matches.filter(m => m.completed).length}/{ladder.matches.length} completed matches
+                        {ladder.matchFormat && (
+                          <span> • {ladder.matchFormat.sets} set{ladder.matchFormat.sets > 1 ? 's' : ''}</span>
+                        )}
                       </p>
                     </div>
+                    <div>
+                      <Button 
+                        onClick={() => setShowFormatEditor(showFormatEditor === ladder.id ? null : ladder.id)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        ⚙️ Format
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* Format Editor */}
+                  {showFormatEditor === ladder.id && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                      <h3 className="text-lg font-semibold mb-3">Match Format Settings</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {[1, 2, 3, 5].map(sets => (
+                          <Button
+                            key={sets}
+                            onClick={() => updateLadderFormat(ladder.id, sets)}
+                            variant={ladder.matchFormat?.sets === sets ? "default" : "outline"}
+                            size="sm"
+                          >
+                            {sets} Set{sets > 1 ? 's' : ''}
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Note: Changing format will update all existing match scores. Shortening will remove extra sets, extending will add X for unplayed sets.
+                      </p>
+                    </div>
+                  )}
 
                   {ladder.teams.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -412,7 +479,7 @@ export default function WholeLadderPage() {
                   ) : (
                     // Scores View (Match Results Table)
                     <div className="overflow-auto md:rounded-lg md:border rounded-none border-none">
-                      {ladder.matchFormat?.sets === 1 ? (
+                      {(ladder.matchFormat?.sets === 1) ? (
                         // Compact 2x2 table for single set format
                         <table className="w-full max-w-md">
                           <thead>
