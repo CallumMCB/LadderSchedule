@@ -335,7 +335,7 @@ export default function WholeLadderPage() {
                     <div>
                       <h2 className="text-2xl font-semibold">{ladder.name}</h2>
                       <p className="text-sm text-muted-foreground">
-                        Ends: {new Date(ladder.endDate).toLocaleDateString()} • {ladder.teams.length} teams • {ladder.matches.filter(m => m.completed).length} completed matches
+                        Ends: {new Date(ladder.endDate).toLocaleDateString()} • {ladder.teams.length} teams • {ladder.matches.filter(m => m.completed).length}/{ladder.matches.length} completed matches
                       </p>
                     </div>
                   </div>
