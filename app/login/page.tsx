@@ -11,7 +11,6 @@ const [error, setError] = useState("");
 const [showForgotPassword, setShowForgotPassword] = useState(false);
 const [forgotEmail, setForgotEmail] = useState("");
 const [message, setMessage] = useState("");
-const [resetMethod, setResetMethod] = useState<'email' | 'sms'>('email');
 
 async function onSubmit(e: React.FormEvent) {
 e.preventDefault();
@@ -40,12 +39,12 @@ try {
 const response = await fetch('/api/auth/forgot-password', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ email: forgotEmail, method: resetMethod }),
+body: JSON.stringify({ email: forgotEmail }),
 });
 
 if (response.ok) {
 const data = await response.json();
-let displayMessage = `One-time password sent to your ${resetMethod}!`;
+let displayMessage = `One-time password sent to your email!`;
 // In development, show the OTP for testing
 if (data.otp) {
 displayMessage += ` (Dev mode OTP: ${data.otp})`;
@@ -100,36 +99,8 @@ Register here
 <>
 <form onSubmit={handleForgotPassword} className="space-y-3">
 <p className="text-sm text-gray-600 mb-4">
-Choose how you'd like to receive your one-time password.
+Enter your email address and we'll send you a one-time password to reset your password.
 </p>
-
-<div className="space-y-2">
-<label className="block text-sm font-medium">Reset Method</label>
-<div className="flex gap-4">
-<label className="flex items-center">
-<input 
-type="radio" 
-name="resetMethod" 
-value="email" 
-checked={resetMethod === 'email'}
-onChange={(e) => setResetMethod(e.target.value as 'email' | 'sms')}
-className="mr-2"
-/>
-Email
-</label>
-<label className="flex items-center">
-<input 
-type="radio" 
-name="resetMethod" 
-value="sms" 
-checked={resetMethod === 'sms'}
-onChange={(e) => setResetMethod(e.target.value as 'email' | 'sms')}
-className="mr-2"
-/>
-SMS
-</label>
-</div>
-</div>
 
 <label className="block text-sm">Email</label>
 <Input 

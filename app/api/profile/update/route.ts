@@ -10,14 +10,13 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const { name, phone, notificationPreference } = await req.json();
+    const { name, phone } = await req.json();
     
     const user = await prisma.user.update({
       where: { email: session.user.email },
       data: { 
         name: name || null,
-        phone: phone || null,
-        notificationPreference: notificationPreference || "email"
+        phone: phone || null
       },
     });
 

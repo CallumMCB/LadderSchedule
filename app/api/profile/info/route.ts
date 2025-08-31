@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { phone: true, notificationPreference: true }
+      select: { phone: true }
     });
 
     if (!user) {
@@ -20,8 +20,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      phone: user.phone,
-      notificationPreference: user.notificationPreference
+      phone: user.phone
     });
 
   } catch (error) {
