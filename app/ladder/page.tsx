@@ -33,6 +33,11 @@ type LadderData = {
   endDate: string;
   teams: Team[];
   matches: Match[];
+  matchFormat?: {
+    sets: number;
+    gamesPerSet: number;
+    winnerBy: string;
+  };
 };
 
 export default function WholeLadderPage() {
@@ -407,25 +412,94 @@ export default function WholeLadderPage() {
                   ) : (
                     // Scores View (Match Results Table)
                     <div className="overflow-auto md:rounded-lg md:border rounded-none border-none">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="p-3 text-left font-medium">Team</th>
-                            {ladder.teams.map(team => (
-                              <th key={team.id} className="p-2 text-center font-medium min-w-[120px]">
-                                <div 
-                                  className="text-xs px-2 py-1 rounded text-white"
-                                  style={{ backgroundColor: team.color }}
-                                >
-                                  {getTeamDisplayName(team).length > 15 
-                                    ? getTeamDisplayName(team).substring(0, 15) + '...'
-                                    : getTeamDisplayName(team)
+                      {ladder.matchFormat?.sets === 1 ? (
+                        // Compact 2x2 table for single set format
+                        <table className="w-full max-w-md">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="p-3 w-16"></th>
+                              {ladder.teams.slice(0, 2).map(team => (
+                                <th key={team.id} className="p-2 text-center font-medium">
+                                  <div 
+                                    className="w-8 h-8 rounded mx-auto"
+                                    style={{ backgroundColor: team.color }}
+                                    title={getTeamDisplayName(team)}
+                                  />
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ladder.teams.slice(0, 2).map(rowTeam => (
+                              <tr key={rowTeam.id} className="border-b">
+                                <td className="p-3 font-medium">
+                                  <div 
+                                    className="w-8 h-8 rounded"
+                                    style={{ backgroundColor: rowTeam.color }}
+                                    title={getTeamDisplayName(rowTeam)}
+                                  />
+                                </td>
+                                {ladder.teams.slice(0, 2).map(colTeam => {
+                                  if (rowTeam.id === colTeam.id) {
+                                    return (
+                                      <td key={colTeam.id} className="p-2 bg-gray-100">
+                                        <div className="text-center text-gray-400 text-sm">—</div>
+                                      </td>
+                                    );
                                   }
-                                </div>
-                              </th>
+
+                                  const match = getMatchBetweenTeams(rowTeam.id, colTeam.id, ladder.matches);
+                                  const isRowTeamFirst = match ? match.team1Id === rowTeam.id : false;
+                                  const scoreDisplay = match ? formatScore(match, isRowTeamFirst) : null;
+
+                                  return (
+                                    <td key={colTeam.id} className="p-2">
+                                      <div className="text-center">
+                                        {scoreDisplay ? (
+                                          <div className="text-sm font-mono font-semibold">
+                                            {scoreDisplay}
+                                          </div>
+                                        ) : match ? (
+                                          <div className="text-xs text-gray-500">
+                                            {match.confirmed ? 'Scheduled' : 'Pending'}
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-gray-400">No match</div>
+                                        )}
+                                        {match && (
+                                          <div className="text-xs text-gray-400 mt-1">
+                                            {new Date(match.startAt).toLocaleDateString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
                             ))}
-                          </tr>
-                        </thead>
+                          </tbody>
+                        </table>
+                      ) : (
+                        // Standard full team grid for multi-set format
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="p-3 text-left font-medium">Team</th>
+                              {ladder.teams.map(team => (
+                                <th key={team.id} className="p-2 text-center font-medium min-w-[120px]">
+                                  <div 
+                                    className="text-xs px-2 py-1 rounded text-white"
+                                    style={{ backgroundColor: team.color }}
+                                  >
+                                    {getTeamDisplayName(team).length > 15 
+                                      ? getTeamDisplayName(team).substring(0, 15) + '...'
+                                      : getTeamDisplayName(team)
+                                    }
+                                  </div>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
                         <tbody>
                           {ladder.teams.map(rowTeam => (
                             <tr key={rowTeam.id} className="border-b">
@@ -480,8 +554,9 @@ export default function WholeLadderPage() {
                               })}
                             </tr>
                           ))}
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      )}
                     </div>
                   )}
                 </CardContent>
