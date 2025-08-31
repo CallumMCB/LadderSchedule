@@ -17,13 +17,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // First, get the current ladder to see what we're updating
+    const currentLadder = await prisma.ladder.findUnique({
+      where: { id: ladderId }
+    });
+    console.log('Current ladder before update:', currentLadder?.matchFormat);
+    
     // Update the ladder format - ensure JSON field is properly handled
     const updatedLadder = await prisma.ladder.update({
       where: { id: ladderId },
-      data: { matchFormat: newMatchFormat as any }
+      data: { 
+        matchFormat: JSON.parse(JSON.stringify(newMatchFormat))
+      }
     });
     
-    console.log('Updated ladder:', updatedLadder);
+    console.log('Updated ladder after update:', updatedLadder.matchFormat);
+    console.log('Ladder format update successful:', updatedLadder.id);
 
     // Get all matches for this ladder
     const matches = await prisma.match.findMany({
