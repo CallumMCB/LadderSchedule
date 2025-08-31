@@ -1017,7 +1017,7 @@ export default function TennisLadderScheduler() {
         }
         
         // Save for member2 if needed and different person
-        if (shouldSaveMember2) {
+        if (shouldSaveMember2 && team.member2) {
           savePromises.push(
             fetch('/api/availability/proxy', {
               method: 'POST',
