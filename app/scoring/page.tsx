@@ -54,8 +54,8 @@ export default function ScoringPage() {
   const [scheduleMinute, setScheduleMinute] = useState("00"); // Default to 00 minutes
   const [selectedLadderId, setSelectedLadderId] = useState<string>("");
   const [ladderInfo, setLadderInfo] = useState<{
-    currentLadder?: { id: string; name: string; number: number; endDate: string };
-    allLadders: Array<{ id: string; name: string; number: number; endDate: string }>;
+    currentLadder?: { id: string; name: string; number: number; endDate: string; matchFormat?: any };
+    allLadders: Array<{ id: string; name: string; number: number; endDate: string; matchFormat?: any }>;
   }>({ allLadders: [] });
   const [showFormatModal, setShowFormatModal] = useState(false);
   const [matchFormat, setMatchFormat] = useState({
@@ -73,8 +73,13 @@ export default function ScoringPage() {
   useEffect(() => {
     if (session && selectedLadderId) {
       loadTeamsAndMatches();
+      // Update match format when ladder changes
+      const selectedLadder = ladderInfo.allLadders.find(ladder => ladder.id === selectedLadderId);
+      if (selectedLadder?.matchFormat) {
+        setMatchFormat(selectedLadder.matchFormat);
+      }
     }
-  }, [session, selectedLadderId]);
+  }, [session, selectedLadderId, ladderInfo.allLadders]);
 
   async function loadLadderInfo() {
     try {
@@ -85,6 +90,10 @@ export default function ScoringPage() {
         // Set current ladder as default selection
         if (data.currentLadder) {
           setSelectedLadderId(data.currentLadder.id);
+          // Load match format from current ladder if available
+          if (data.currentLadder.matchFormat) {
+            setMatchFormat(data.currentLadder.matchFormat);
+          }
         }
       }
     } catch (error) {
