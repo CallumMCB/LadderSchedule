@@ -99,8 +99,8 @@ export default function WholeLadderPage() {
     return `${name1} & ${name2}`;
   }
 
-  function getTeamResults(teamId: string, matches: Match[], teams: Team[]) {
-    const results = { wins: 0, losses: 0, totalGames: 0, gamesWon: 0 };
+  function getTeamResults(teamId: string, matches: Match[], teams: Team[], matchFormat?: { sets: number; gamesPerSet: number; winnerBy: string }) {
+    const results = { wins: 0, losses: 0, totalGames: 0, gamesWon: 0, setsWon: 0 };
     
     const playedMatches = matches.filter(match => 
       match.completed && 
@@ -118,22 +118,40 @@ export default function WholeLadderPage() {
       
       let teamGames = 0;
       let opponentGames = 0;
+      let teamSets = 0;
+      let opponentSets = 0;
       
       if (team1DetailedScore.includes(',') || team2DetailedScore.includes(',')) {
-        // Set-based scoring - sum up all games from all sets
+        // Set-based scoring - sum up all games from all sets and count sets
         const team1Sets = team1DetailedScore.split(',').map(s => s.trim());
         const team2Sets = team2DetailedScore.split(',').map(s => s.trim());
         
         team1Sets.forEach((setScore, index) => {
-          if (setScore !== 'X' && setScore !== '') {
-            teamGames += isTeam1 ? parseInt(setScore) || 0 : parseInt(team2Sets[index]) || 0;
-            opponentGames += isTeam1 ? parseInt(team2Sets[index]) || 0 : parseInt(setScore) || 0;
+          const team2SetScore = team2Sets[index] || "";
+          if (setScore !== 'X' && setScore !== '' && team2SetScore !== 'X' && team2SetScore !== '') {
+            const t1Games = parseInt(setScore) || 0;
+            const t2Games = parseInt(team2SetScore) || 0;
+            
+            if (isTeam1) {
+              teamGames += t1Games;
+              opponentGames += t2Games;
+              if (t1Games > t2Games) teamSets++;
+              else if (t2Games > t1Games) opponentSets++;
+            } else {
+              teamGames += t2Games;
+              opponentGames += t1Games;
+              if (t2Games > t1Games) teamSets++;
+              else if (t1Games > t2Games) opponentSets++;
+            }
           }
         });
       } else {
         // Simple scoring - these are likely already total games or match scores
         teamGames = isTeam1 ? match.team1Score! : match.team2Score!;
         opponentGames = isTeam1 ? match.team2Score! : match.team1Score!;
+        // For simple scoring, assume sets won equals match score
+        teamSets = teamGames;
+        opponentSets = opponentGames;
       }
       
       // Count match wins/losses based on final scores
@@ -148,6 +166,7 @@ export default function WholeLadderPage() {
       
       results.totalGames += teamGames + opponentGames;
       results.gamesWon += teamGames;
+      results.setsWon += teamSets;
     });
     
     return results;
@@ -155,7 +174,7 @@ export default function WholeLadderPage() {
 
   function getLadderStandings(ladder: LadderData) {
     const standings = ladder.teams.map(team => {
-      const results = getTeamResults(team.id, ladder.matches, ladder.teams);
+      const results = getTeamResults(team.id, ladder.matches, ladder.teams, ladder.matchFormat);
       return {
         team,
         ...results,
@@ -440,7 +459,9 @@ export default function WholeLadderPage() {
                             <th className="p-3 text-center font-medium">Matches Won</th>
                             <th className="p-3 text-center font-medium">Matches Lost</th>
                             <th className="p-3 text-center font-medium">Win %</th>
-                            <th className="p-3 text-center font-medium">Games Won</th>
+                            <th className="p-3 text-center font-medium">
+                              {ladder.matchFormat?.winnerBy === 'games' ? 'Games Won' : 'Sets Won'}
+                            </th>
                             <th className="p-3 text-center font-medium">Next Season</th>
                           </tr>
                         </thead>
@@ -479,7 +500,7 @@ export default function WholeLadderPage() {
                                 }
                               </td>
                               <td className="p-3 text-center">
-                                {standing.gamesWon}
+                                {ladder.matchFormat?.winnerBy === 'games' ? standing.gamesWon : standing.setsWon}
                               </td>
                               <td className="p-3 text-center font-medium text-sm">
                                 {calculateMovementWithDestination(ladder, index + 1, standings.length, ladders)}
