@@ -73,8 +73,19 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      // Don't reveal whether email exists or not for security
+      // Don't reveal whether email exists or not for security - but don't actually send email
+      console.log(`❌ Password reset attempted for non-existent email: ${email}`);
       return NextResponse.json({ message: "If the email exists, an OTP will be sent to your email." });
+    }
+
+    // Rate limiting: Check if user requested OTP recently (within 1 minute)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000); // 1 minute ago
+    if (user.otpExpiry && user.otpExpiry > oneMinuteAgo) {
+      const timeLeft = Math.ceil((user.otpExpiry.getTime() - oneMinuteAgo.getTime()) / 1000);
+      console.log(`⏱️ Rate limit hit for ${email}. ${timeLeft}s remaining.`);
+      return NextResponse.json({ 
+        error: `Please wait ${timeLeft} seconds before requesting another code.` 
+      }, { status: 429 });
     }
 
     // Generate 6-digit OTP
@@ -93,7 +104,7 @@ export async function POST(request: Request) {
     // Send email with OTP
     try {
       await sendOTPEmail(user.email, user.name || 'User', otpCode);
-      console.log(`✅ OTP email process completed for ${user.email}: ${otpCode}`);
+      console.log(`✅ OTP email sent successfully for registered user: ${user.email}`);
     } catch (emailError) {
       console.error(`❌ Email sending failed for ${user.email}:`, emailError);
       // Don't fail the request - OTP is still saved in database

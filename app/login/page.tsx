@@ -55,7 +55,11 @@ window.location.href = `/reset-password?email=${encodeURIComponent(forgotEmail)}
 }, 2000);
 } else {
 const error = await response.json();
+if (response.status === 429) {
+setError(error.error || "Rate limit exceeded. Please wait before trying again.");
+} else {
 setError(error.error || "Failed to send reset email");
+}
 }
 } catch (error) {
 setError("Network error");
