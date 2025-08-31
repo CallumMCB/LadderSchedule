@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [notificationPreference, setNotificationPreference] = useState("email");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   
@@ -62,6 +63,7 @@ export default function ProfilePage() {
       if (response.ok) {
         const data = await response.json();
         setPhone(data.phone || "");
+        setNotificationPreference(data.notificationPreference || "email");
       }
     } catch (error) {
       console.error("Failed to load profile:", error);
@@ -185,7 +187,7 @@ export default function ProfilePage() {
       const response = await fetch('/api/profile/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ name, phone, notificationPreference }),
       });
 
       if (response.ok) {
@@ -387,6 +389,37 @@ export default function ProfilePage() {
                 type="tel"
               />
               <p className="text-xs text-gray-500 mt-1">Used for opponent contact information</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Notification Preference</label>
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="notificationPreference" 
+                    value="email" 
+                    checked={notificationPreference === 'email'}
+                    onChange={(e) => setNotificationPreference(e.target.value)}
+                    className="mr-2"
+                  />
+                  Email
+                </label>
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="notificationPreference" 
+                    value="sms" 
+                    checked={notificationPreference === 'sms'}
+                    onChange={(e) => setNotificationPreference(e.target.value)}
+                    className="mr-2"
+                  />
+                  SMS
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Choose how you'd like to receive notifications. SMS requires a phone number.
+              </p>
             </div>
             
             {message && (
