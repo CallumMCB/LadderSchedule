@@ -222,6 +222,8 @@ export default function WholeLadderPage() {
 
   async function updateLadderFormat(ladderId: string, newSets: number) {
     try {
+      console.log(`Updating ladder ${ladderId} to ${newSets} sets`);
+      
       const newMatchFormat = {
         sets: newSets,
         gamesPerSet: 6,
@@ -237,14 +239,18 @@ export default function WholeLadderPage() {
         })
       });
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('Update result:', result);
         console.log(`Updated ladder format and ${result.updatedMatches} matches`);
         // Reload ladder data to reflect changes
-        loadAllLadders();
+        await loadAllLadders();
         setShowFormatEditor(null);
       } else {
-        console.error('Failed to update ladder format');
+        const errorData = await response.json();
+        console.error('Failed to update ladder format:', errorData);
       }
     } catch (error) {
       console.error('Error updating ladder format:', error);
