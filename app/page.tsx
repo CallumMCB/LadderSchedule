@@ -1884,6 +1884,66 @@ export default function TennisLadderScheduler() {
           </Button>
         </div>
       </div>
+
+      {/* Mobile Date Range Picker Modal */}
+      {showDateRangePicker && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50" 
+            onClick={() => setShowDateRangePicker(false)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Select Week</h3>
+              <button
+                onClick={() => setShowDateRangePicker(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setWeekStart(prev => addDays(prev, -7));
+                    setDayOffset(0);
+                  }}
+                  className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  ← Previous Week
+                </button>
+                <div className="text-center">
+                  <div className="font-medium">
+                    {formatDate(weekStart)} - {formatDate(addDays(weekStart, 6))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setWeekStart(prev => addDays(prev, 7));
+                    setDayOffset(0);
+                  }}
+                  className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  Next Week →
+                </button>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setWeekStart(startOfWeekMonday(new Date()));
+                  setDayOffset(0);
+                  setShowDateRangePicker(false);
+                }}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Go to This Week
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -2614,10 +2674,11 @@ function AvailabilityGrid({
         <thead>
           <tr>
             <th className="sticky left-0 bg-white/80 backdrop-blur border p-2 text-left">Time</th>
-            {getVisibleDays().map((d, i) => {
-              const dayIndex = isMobile ? (dayOffset + i) : i;
+            {days.map((d, i) => {
+              const dayOfWeek = d.getDay();
+              const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
               return (
-                <th key={dayIndex} className="border p-2 text-left min-w-[120px]">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
+                <th key={i} className="border p-2 text-left min-w-[120px]">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
               );
             })}
           </tr>
@@ -2648,7 +2709,7 @@ function AvailabilityGrid({
               rows.push(
                 <tr key={`${hour}-00`} className="odd:bg-muted/20">
                   <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel0}</td>
-                  {getVisibleDays().map((d, c) => {
+                  {days.map((d, c) => {
                     const key = isoAt(d, hour, minute0);
                     return (
                       <td key={c} className="p-0 align-top w-32">
@@ -2666,7 +2727,7 @@ function AvailabilityGrid({
               rows.push(
                 <tr key={`${hour}-30`} className="odd:bg-muted/20">
                   <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel30}</td>
-                  {getVisibleDays().map((d, c) => {
+                  {days.map((d, c) => {
                     const key = isoAt(d, hour, minute30);
                     return (
                       <td key={c} className="p-0 align-top w-32">
@@ -2683,65 +2744,5 @@ function AvailabilityGrid({
         </tbody>
       </table>
     </div>
-
-    {/* Mobile Date Range Picker Modal */}
-    {showDateRangePicker && (
-      <div className="fixed inset-0 z-50 md:hidden">
-        <div 
-          className="absolute inset-0 bg-black bg-opacity-50" 
-          onClick={() => setShowDateRangePicker(false)}
-        />
-        <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Select Week</h3>
-            <button
-              onClick={() => setShowDateRangePicker(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setWeekStart(prev => addDays(prev, -7));
-                  setDayOffset(0);
-                }}
-                className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                ← Previous Week
-              </button>
-              <div className="text-center">
-                <div className="font-medium">
-                  {formatDate(weekStart)} - {formatDate(addDays(weekStart, 6))}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setWeekStart(prev => addDays(prev, 7));
-                  setDayOffset(0);
-                }}
-                className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Next Week →
-              </button>
-            </div>
-            
-            <button
-              onClick={() => {
-                setWeekStart(startOfWeekMonday(new Date()));
-                setDayOffset(0);
-                setShowDateRangePicker(false);
-              }}
-              className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Go to This Week
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
   );
 }
