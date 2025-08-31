@@ -527,13 +527,18 @@ export default function ScoringPage() {
       const timeString = `${scheduleHour.padStart(2, '0')}:${scheduleMinute}`;
       const matchDateTime = new Date(`${scheduleDate}T${timeString}:00.000Z`);
       
+      // Determine which team is the opponent (not the current user's team)
+      const opponentTeamId = showScheduleModal.team1Id === teamsData.myTeamId 
+        ? showScheduleModal.team2Id 
+        : showScheduleModal.team1Id;
+      
       // First, confirm the match
       const response = await fetch('/api/matches/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slotKey: matchDateTime.toISOString(),
-          opponentTeamId: showScheduleModal.team2Id
+          opponentTeamId: opponentTeamId
         }),
       });
 
