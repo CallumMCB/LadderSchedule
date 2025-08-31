@@ -121,6 +121,7 @@ export default function TennisLadderScheduler() {
   const [proxyTakeoverSlots, setProxyTakeoverSlots] = useState<Set<string>>(new Set()); // Slots taken over from proxy
   const [proxyAvail, setProxyAvail] = useState<Set<string>>(new Set()); // For when acting on behalf
   const [proxyUnavail, setProxyUnavail] = useState<Set<string>>(new Set()); // Proxy unavailable state
+  const [proxyModifiedSlots, setProxyModifiedSlots] = useState<Set<string>>(new Set()); // Track all modified slots
   const [teamProxyStates, setTeamProxyStates] = useState<Record<string, { avail: Set<string>; unavail: Set<string> }>>({});
   const [showMatchConfirmation, setShowMatchConfirmation] = useState<{
     slot: string;
@@ -578,6 +579,7 @@ export default function TennisLadderScheduler() {
             next.delete(slot);
             return next;
           });
+          setProxyModifiedSlots(prev => new Set(prev).add(slot));
         } else if (action === 'unavailable') {
           setProxyAvail(prev => {
             const next = new Set(prev);
@@ -585,6 +587,7 @@ export default function TennisLadderScheduler() {
             return next;
           });
           setProxyUnavail(prev => new Set(prev).add(slot));
+          setProxyModifiedSlots(prev => new Set(prev).add(slot));
         } else if (action === 'both-available') {
           setProxyAvail(prev => new Set(prev).add(slot));
           setProxyUnavail(prev => {
@@ -592,6 +595,7 @@ export default function TennisLadderScheduler() {
             next.delete(slot);
             return next;
           });
+          setProxyModifiedSlots(prev => new Set(prev).add(slot));
         } else if (action === 'clear') {
           setProxyAvail(prev => {
             const next = new Set(prev);
@@ -603,6 +607,7 @@ export default function TennisLadderScheduler() {
             next.delete(slot);
             return next;
           });
+          setProxyModifiedSlots(prev => new Set(prev).add(slot));
         }
       });
     } else {
@@ -721,35 +726,41 @@ export default function TennisLadderScheduler() {
       });
       
       // Three-state cycle: available → unavailable → unset → available
-      // Determine the current effective display state
-      if (effectiveAvailable && !hasProxyUnavailable) {
-        // Currently showing as Available → change to Unavailable  
+      if (hasProxyUnavailable) {
+        // Currently Unavailable (via proxy) → change to Unset (remove all proxy modifications)
+        console.log('Unavailable → Unset');
+        setProxyUnavail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setProxyAvail(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        // Keep tracking this slot as modified even when cleared
+        setProxyModifiedSlots(prev => new Set(prev).add(key));
+      } else if (effectiveAvailable) {
+        // Currently Available (either from DB or proxy) → change to Unavailable
+        console.log('Available → Unavailable');
         setProxyAvail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
         setProxyUnavail(prev => new Set(prev).add(key));
-      } else if (hasProxyUnavailable) {
-        // Currently showing as Unavailable (via proxy) → change to Unset (remove all proxy modifications)
-        setProxyUnavail(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-        setProxyAvail(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
+        setProxyModifiedSlots(prev => new Set(prev).add(key));
       } else {
-        // Unset/None state (no proxy modifications) → change to Available
+        // Unset/None state (no availability, no proxy modifications) → change to Available
+        console.log('Unset → Available');
         setProxyAvail(prev => new Set(prev).add(key));
         setProxyUnavail(prev => {
           const next = new Set(prev);
           next.delete(key);
           return next;
         });
+        setProxyModifiedSlots(prev => new Set(prev).add(key));
       }
     } else {
       // Normal behavior for my own team
@@ -845,6 +856,7 @@ export default function TennisLadderScheduler() {
           next.delete(key);
           return next;
         });
+        setProxyModifiedSlots(prev => new Set(prev).add(key));
       } else {
         // Set both as available and clear unavailable
         setProxyAvail(prev => new Set(prev).add(key));
@@ -853,6 +865,7 @@ export default function TennisLadderScheduler() {
           next.delete(key);
           return next;
         });
+        setProxyModifiedSlots(prev => new Set(prev).add(key));
       }
     } else {
       // Normal behavior for my own team
@@ -961,7 +974,7 @@ export default function TennisLadderScheduler() {
       const teamsToSave = new Map<string, { avail: Set<string>; unavail: Set<string> }>();
       
       // Add currently active team changes
-      if (actingAsTeam && (proxyAvail.size > 0 || proxyUnavail.size > 0)) {
+      if (actingAsTeam && proxyModifiedSlots.size > 0) {
         teamsToSave.set(actingAsTeam, {
           avail: new Set(proxyAvail),
           unavail: new Set(proxyUnavail)
@@ -1042,6 +1055,7 @@ export default function TennisLadderScheduler() {
         setTeamProxyStates({});
         setProxyAvail(new Set());
         setProxyUnavail(new Set());
+        setProxyModifiedSlots(new Set());
         await loadAllData();
         setTimeout(() => setSaveMsg(""), 2000);
       } else {
@@ -1428,6 +1442,7 @@ export default function TennisLadderScheduler() {
                 } else {
                   setProxyAvail(new Set());
                   setProxyUnavail(new Set());
+                  setProxyModifiedSlots(new Set());
                 }
               }}
               className="h-8 px-2 rounded-lg border border-neutral-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900/10"
