@@ -1,32 +1,44 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 async function sendOTPEmail(email: string, name: string, otp: string) {
-  // In a real application, you would use a service like SendGrid, Mailgun, etc.
-  // For now, we'll simulate sending an email
-  console.log(`
-📧 EMAIL TO: ${email}
+  try {
+    await resend.emails.send({
+      from: 'Tennis Ladder <noreply@resend.dev>', // Use resend.dev domain for testing
+      to: email,
+      subject: 'Your Tennis Ladder Password Reset Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Tennis Ladder Password Reset</h2>
+          <p>Hi ${name},</p>
+          <p>Your one-time password for resetting your Tennis Ladder account is:</p>
+          <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <h1 style="color: #2563eb; font-size: 32px; margin: 0; letter-spacing: 4px;">${otp}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <p>Best regards,<br>Tennis Ladder Team</p>
+        </div>
+      `,
+      text: `Hi ${name},\n\nYour one-time password for resetting your Tennis Ladder account is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this, please ignore this email.\n\nBest regards,\nTennis Ladder Team`
+    });
+    
+    console.log(`✅ Email sent successfully to ${email}`);
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    // Fall back to console logging if email fails
+    console.log(`
+📧 EMAIL TO: ${email} (Email service failed, showing in console)
 Subject: Your Tennis Ladder Password Reset Code
-
-Hi ${name},
-
-Your one-time password for resetting your Tennis Ladder account is:
-
-${otp}
-
-This code will expire in 10 minutes.
-
-If you didn't request this, please ignore this email.
-
-Best regards,
-Tennis Ladder Team
-  `);
-  
-  // TODO: Replace with actual email service
-  // Example with nodemailer or SendGrid would go here
+OTP: ${otp}
+    `);
+  }
 }
 
 async function sendOTPSMS(phone: string, otp: string) {

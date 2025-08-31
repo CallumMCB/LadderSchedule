@@ -44,7 +44,13 @@ body: JSON.stringify({ email: forgotEmail, method: resetMethod }),
 });
 
 if (response.ok) {
-setMessage(`One-time password sent to your ${resetMethod}!`);
+const data = await response.json();
+let displayMessage = `One-time password sent to your ${resetMethod}!`;
+// In development, show the OTP for testing
+if (data.otp) {
+displayMessage += ` (Dev mode OTP: ${data.otp})`;
+}
+setMessage(displayMessage);
 setTimeout(() => {
 setShowForgotPassword(false);
 setMessage("");
