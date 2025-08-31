@@ -107,6 +107,10 @@ export default function TennisLadderScheduler() {
   const [ladderInfoLoaded, setLadderInfoLoaded] = useState(false);
 
   const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
+  const [isMobile, setIsMobile] = useState(false);
+  const [visibleDays, setVisibleDays] = useState(7);
+  const [dayOffset, setDayOffset] = useState(0);
+  const [showDateRangePicker, setShowDateRangePicker] = useState(false);
   const [myAvail, setMyAvail] = useState<Set<string>>(new Set());
   const [myUnavail, setMyUnavail] = useState<Set<string>>(new Set());
   const [partnerAvail, setPartnerAvail] = useState<Set<string>>(new Set());
@@ -176,6 +180,60 @@ export default function TennisLadderScheduler() {
   }, [myAvail, partnerAvail]);
 
   const { days } = useMemo(() => buildSlotsForWeek(weekStart), [weekStart]);
+
+  // Mobile detection and setup
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setVisibleDays(window.innerWidth < 480 ? 2 : 4);
+      } else {
+        setVisibleDays(7);
+        setDayOffset(0);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Mobile navigation functions
+  function navigateDays(direction: 'prev' | 'next') {
+    if (direction === 'prev') {
+      if (dayOffset > 0) {
+        setDayOffset(prev => Math.max(0, prev - visibleDays));
+      } else {
+        // Go to previous week
+        setWeekStart(prev => {
+          const newDate = new Date(prev);
+          newDate.setDate(newDate.getDate() - 7);
+          return newDate;
+        });
+        setDayOffset(7 - visibleDays);
+      }
+    } else {
+      if (dayOffset + visibleDays < 7) {
+        setDayOffset(prev => Math.min(7 - visibleDays, prev + visibleDays));
+      } else {
+        // Go to next week
+        setWeekStart(prev => {
+          const newDate = new Date(prev);
+          newDate.setDate(newDate.getDate() + 7);
+          return newDate;
+        });
+        setDayOffset(0);
+      }
+    }
+  }
+
+  function getVisibleDays() {
+    if (isMobile) {
+      return days.slice(dayOffset, dayOffset + visibleDays);
+    }
+    return days;
+  }
 
   // Load availability data when component mounts or week changes
   useEffect(() => {
@@ -1394,13 +1452,36 @@ export default function TennisLadderScheduler() {
 
       {/* Week Navigation */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="text-sm font-medium whitespace-nowrap">{weekLabel}</div>
-        <Button variant="outline" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        {isMobile ? (
+          <>
+            {/* Mobile Day Navigation */}
+            <Button variant="outline" onClick={() => navigateDays('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <button
+              onClick={() => setShowDateRangePicker(!showDateRangePicker)}
+              className="text-sm font-medium whitespace-nowrap hover:text-blue-600 flex items-center gap-1"
+            >
+              {formatDate(getVisibleDays()[0])}
+              {visibleDays > 1 && ` - ${formatDate(getVisibleDays()[visibleDays - 1])}`}
+              <span className="text-xs">📅</span>
+            </button>
+            <Button variant="outline" onClick={() => navigateDays('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* Desktop Week Navigation */}
+            <Button variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-sm font-medium whitespace-nowrap">{weekLabel}</div>
+            <Button variant="outline" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
 
 
@@ -2533,9 +2614,12 @@ function AvailabilityGrid({
         <thead>
           <tr>
             <th className="sticky left-0 bg-white/80 backdrop-blur border p-2 text-left">Time</th>
-            {days.map((d, i) => (
-              <th key={i} className="border p-2 text-left min-w-[120px]">{DAY_LABELS[i]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
-            ))}
+            {getVisibleDays().map((d, i) => {
+              const dayIndex = isMobile ? (dayOffset + i) : i;
+              return (
+                <th key={dayIndex} className="border p-2 text-left min-w-[120px]">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -2564,7 +2648,7 @@ function AvailabilityGrid({
               rows.push(
                 <tr key={`${hour}-00`} className="odd:bg-muted/20">
                   <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel0}</td>
-                  {days.map((d, c) => {
+                  {getVisibleDays().map((d, c) => {
                     const key = isoAt(d, hour, minute0);
                     return (
                       <td key={c} className="p-0 align-top w-32">
@@ -2582,7 +2666,7 @@ function AvailabilityGrid({
               rows.push(
                 <tr key={`${hour}-30`} className="odd:bg-muted/20">
                   <td className="sticky left-0 bg-white/80 backdrop-blur border p-2 align-top text-sm font-medium">{rowLabel30}</td>
-                  {days.map((d, c) => {
+                  {getVisibleDays().map((d, c) => {
                     const key = isoAt(d, hour, minute30);
                     return (
                       <td key={c} className="p-0 align-top w-32">
@@ -2599,5 +2683,65 @@ function AvailabilityGrid({
         </tbody>
       </table>
     </div>
+
+    {/* Mobile Date Range Picker Modal */}
+    {showDateRangePicker && (
+      <div className="fixed inset-0 z-50 md:hidden">
+        <div 
+          className="absolute inset-0 bg-black bg-opacity-50" 
+          onClick={() => setShowDateRangePicker(false)}
+        />
+        <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Select Week</h3>
+            <button
+              onClick={() => setShowDateRangePicker(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setWeekStart(prev => addDays(prev, -7));
+                  setDayOffset(0);
+                }}
+                className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                ← Previous Week
+              </button>
+              <div className="text-center">
+                <div className="font-medium">
+                  {formatDate(weekStart)} - {formatDate(addDays(weekStart, 6))}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setWeekStart(prev => addDays(prev, 7));
+                  setDayOffset(0);
+                }}
+                className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                Next Week →
+              </button>
+            </div>
+            
+            <button
+              onClick={() => {
+                setWeekStart(startOfWeekMonday(new Date()));
+                setDayOffset(0);
+                setShowDateRangePicker(false);
+              }}
+              className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Go to This Week
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
