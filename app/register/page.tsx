@@ -4,14 +4,18 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+44 ");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [receiveUpdates, setReceiveUpdates] = useState(true);
+  const [receiveMatchNotifications, setReceiveMatchNotifications] = useState(true);
+  const [receiveMarketing, setReceiveMarketing] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -35,7 +39,17 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, phone, password }),
+        body: JSON.stringify({ 
+          email, 
+          name, 
+          phone, 
+          password, 
+          notificationPreferences: {
+            receiveUpdates,
+            receiveMatchNotifications,
+            receiveMarketing
+          }
+        }),
       });
 
       if (response.ok) {
@@ -83,7 +97,7 @@ export default function RegisterPage() {
                 type="tel"
                 value={phone} 
                 onChange={e => setPhone(e.target.value)} 
-                placeholder="+1 (555) 123-4567" 
+                placeholder="+44 7123 456789" 
               />
             </div>
 
@@ -119,6 +133,42 @@ export default function RegisterPage() {
                 placeholder="••••••••" 
                 required
               />
+            </div>
+            
+            <div className="space-y-3">
+              <label className="block text-sm font-medium">Notification Preferences</label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="updates"
+                    checked={receiveUpdates}
+                    onCheckedChange={setReceiveUpdates}
+                  />
+                  <label htmlFor="updates" className="text-sm">
+                    Receive updates about the tennis ladder
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="matches"
+                    checked={receiveMatchNotifications}
+                    onCheckedChange={setReceiveMatchNotifications}
+                  />
+                  <label htmlFor="matches" className="text-sm">
+                    Receive match notifications and reminders
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="marketing"
+                    checked={receiveMarketing}
+                    onCheckedChange={setReceiveMarketing}
+                  />
+                  <label htmlFor="marketing" className="text-sm">
+                    Receive occasional marketing and info emails (optional)
+                  </label>
+                </div>
+              </div>
             </div>
             
             {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
