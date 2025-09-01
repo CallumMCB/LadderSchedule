@@ -12,6 +12,6 @@ jobs:
     steps:
       - name: Call Weather Update Endpoint
         run: |
-          curl -X POST "https://ladder-schedule.vercel.app/api/cron/weather" \
+          curl -X POST "https://www.ladderschedule.com/api/cron/weather" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json"
