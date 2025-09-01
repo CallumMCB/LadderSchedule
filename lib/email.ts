@@ -7,7 +7,6 @@ interface TeamMember {
   id: string;
   email: string;
   name: string | null;
-  phone: string | null;
   receiveMatchNotifications: boolean;
 }
 
@@ -30,7 +29,6 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
         id: true,
         email: true,
         name: true,
-        phone: true,
         receiveMatchNotifications: true
       }
     });
@@ -43,7 +41,6 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
         id: true,
         email: true,
         name: true,
-        phone: true,
         receiveMatchNotifications: true
       }
     });
@@ -102,28 +99,11 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
       return;
     }
 
-    // Create SMS opt-in URLs for users without phone numbers
-    const createOptInUrl = (userId: string, matchId: string) => 
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/sms/opt-in?userId=${userId}&matchId=${matchId}`;
-
     // Send email to each recipient
     for (const recipient of recipients) {
       const isTeam1 = team1Members.some(m => m.id === recipient.id);
       const opponentTeamName = isTeam1 ? team2Name : team1Name;
       const recipientName = recipient.name || recipient.email;
-      
-      // Check if user has phone number for SMS reminders
-      const hasPhone = !!recipient.phone;
-      const smsOptInSection = hasPhone ? '' : `
-        <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
-          <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">📱 Want SMS Reminders?</h3>
-          <p style="margin: 0 0 12px 0; color: #0f172a;">Get a reminder 1 hour before your match by adding your phone number.</p>
-          <a href="${createOptInUrl(recipient.id, matchDetails.id)}" 
-             style="background: #0ea5e9; color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block;">
-            Enable SMS Reminders
-          </a>
-        </div>
-      `;
 
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
@@ -144,8 +124,6 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
                 <p style="margin: 4px 0; color: #6b7280;"><strong style="color: #374151;">Match ID:</strong> #${matchDetails.id.slice(-6)}</p>
               </div>
             </div>
-
-            ${smsOptInSection}
 
             <div style="background: #fef7cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">📝 Important Reminders</h3>
@@ -186,11 +164,6 @@ Your tennis match has been scheduled:
 🆚 Opponents: ${opponentTeamName}
 🔗 Match ID: #${matchDetails.id.slice(-6)}
 
-${!hasPhone ? `
-📱 Want SMS Reminders?
-Get a reminder 1 hour before your match by adding your phone number:
-${createOptInUrl(recipient.id, matchDetails.id)}
-` : ''}
 
 📝 Important Reminders:
 • Please arrive 10 minutes early to warm up
@@ -216,5 +189,104 @@ Tennis Ladder Team
 
   } catch (error) {
     console.error('❌ Failed to send match confirmation email:', error);
+  }
+}
+
+export async function sendEmailVerification(email: string, name: string, verificationToken: string) {
+  if (!resend) {
+    console.error('❌ Resend API key not configured');
+    throw new Error('Email service not configured');
+  }
+
+  const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${verificationToken}`;
+
+  try {
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
+        <div style="background: linear-gradient(135deg, #065f46 0%, #059669 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: bold;">🎾 Welcome to Tennis Ladder!</h1>
+          <p style="margin: 8px 0 0 0; opacity: 0.9;">Please verify your email to activate your account</p>
+        </div>
+        
+        <div style="background: white; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+          <h2 style="color: #059669; margin: 0 0 16px 0; font-size: 18px;">Hi ${name}!</h2>
+          
+          <p style="margin: 16px 0; color: #374151; line-height: 1.6;">
+            Thank you for signing up for Tennis Ladder! To complete your registration and start playing, 
+            please verify your email address by clicking the button below.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verificationUrl}" 
+               style="background: #059669; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+              Verify Email Address
+            </a>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #0ea5e9;">
+            <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">What happens next?</h3>
+            <p style="margin: 0; color: #0f172a;">Once verified, you'll be automatically logged in and can:</p>
+            <ul style="margin: 8px 0 0 20px; color: #0f172a;">
+              <li>Set your availability for matches</li>
+              <li>Find partners and opponents</li>
+              <li>Schedule and confirm matches</li>
+              <li>Track your ladder progress</li>
+            </ul>
+          </div>
+
+          <div style="background: #fef7cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-size: 14px;">
+              <strong>Important:</strong> This verification link will expire in 24 hours. 
+              If you didn't create an account, please ignore this email.
+            </p>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+          
+          <p style="margin: 0; color: #6b7280; font-size: 14px; text-align: center;">
+            Welcome to the Tennis Ladder community! 🏆<br>
+            <span style="color: #9ca3af;">Tennis Ladder Team</span>
+          </p>
+        </div>
+      </div>
+    `;
+
+    const textContent = `
+🎾 Welcome to Tennis Ladder!
+
+Hi ${name}!
+
+Thank you for signing up for Tennis Ladder! To complete your registration and start playing, please verify your email address by clicking the link below:
+
+${verificationUrl}
+
+What happens next?
+Once verified, you'll be automatically logged in and can:
+• Set your availability for matches
+• Find partners and opponents  
+• Schedule and confirm matches
+• Track your ladder progress
+
+Important: This verification link will expire in 24 hours. If you didn't create an account, please ignore this email.
+
+Welcome to the Tennis Ladder community! 🏆
+
+Tennis Ladder Team
+    `;
+
+    const result = await resend.emails.send({
+      from: 'Tennis Ladder <noreply@ladderschedule.com>',
+      to: [email],
+      subject: '🎾 Welcome to Tennis Ladder - Please Verify Your Email',
+      html: htmlContent,
+      text: textContent
+    });
+
+    console.log(`✅ Verification email sent to ${email}`);
+    return result;
+
+  } catch (error) {
+    console.error('❌ Failed to send verification email:', error);
+    throw error;
   }
 }

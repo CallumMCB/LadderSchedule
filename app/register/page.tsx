@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [receiveMarketing, setReceiveMarketing] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
   async function onSubmit(e: React.FormEvent) {
@@ -53,18 +54,8 @@ export default function RegisterPage() {
       });
 
       if (response.ok) {
-        // Auto-login after successful registration
-        const signInRes = await signIn("credentials", { 
-          email, 
-          password, 
-          redirect: false 
-        });
-        
-        if (signInRes?.ok) {
-          router.push('/');
-        } else {
-          router.push('/login?message=Account created! Please log in.');
-        }
+        const data = await response.json();
+        setEmailSent(true);
       } else {
         const data = await response.json();
         setError(data.error || 'Registration failed');
@@ -74,6 +65,50 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (emailSent) {
+    return (
+      <div className="max-w-md mx-auto mt-10 p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold mb-6 text-green-600">📧 Check Your Email</h2>
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800 mb-2">
+                  We've sent a verification link to <strong>{email}</strong>
+                </p>
+                <p className="text-green-700 text-sm">
+                  Click the link in your email to activate your account and get started!
+                </p>
+              </div>
+              
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm">
+                  <strong>What happens next?</strong><br/>
+                  Once you verify your email, you'll be automatically logged in and can start using Tennis Ladder!
+                </p>
+              </div>
+              
+              <div className="text-sm text-gray-600">
+                <p className="mb-2">Didn't receive the email?</p>
+                <ul className="text-left space-y-1">
+                  <li>• Check your spam/junk folder</li>
+                  <li>• Wait a few minutes for delivery</li>
+                  <li>• Try registering again if needed</li>
+                </ul>
+              </div>
+              
+              <div className="mt-6">
+                <a href="/login" className="text-blue-600 hover:underline">
+                  Already verified? Sign in
+                </a>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

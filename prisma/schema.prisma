@@ -21,6 +21,9 @@ notificationPreference String @default("email") // "email" or "sms"
 receiveUpdates Boolean @default(true) // Receive updates about the tennis ladder
 receiveMatchNotifications Boolean @default(true) // Receive match notifications and reminders  
 receiveMarketing Boolean @default(false) // Receive occasional marketing/info emails
+emailVerified Boolean @default(false) // Whether the email has been verified
+emailVerificationToken String? // Token for email verification
+emailVerificationExpiry DateTime? // Expiry time for email verification token
 
 // Partner link (one-to-one). Unique helps avoid being linked to multiple partners.
 partnerId String? @unique
