@@ -8,7 +8,11 @@
 }
 
 html, body { height: 100%; }
-body { @apply bg-neutral-50 text-neutral-900 antialiased; }
+
+/* Background image optimization */
+body {
+  @apply text-neutral-900 antialiased;
+}
 
 button, [role="button"], input { @apply focus:outline-none focus:ring-2 focus:ring-neutral-900/10; }
 .text-muted-foreground { color: hsl(var(--muted-foreground)); }
