@@ -123,12 +123,12 @@ export async function GET(req: NextRequest) {
         <div class="card">
           <h1 class="success">✅ Email Verified Successfully!</h1>
           <p>Welcome to Tennis Ladder! Your account is now active.</p>
-          <p><div class="spinner"></div>Logging you in automatically...</p>
+          <p><div class="spinner"></div>Redirecting you to login...</p>
           
           <script>
-            // Auto-redirect to login page with pre-filled email
+            // Auto-redirect to login page with verification success message
             setTimeout(function() {
-              window.location.href = '${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/login?email=${encodeURIComponent(user.email)}&verified=true';
+              window.location.href = '${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/login?verified=true&email=${encodeURIComponent(user.email)}';
             }, 2000);
           </script>
           

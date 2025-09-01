@@ -1,16 +1,32 @@
 "use client";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
+const searchParams = useSearchParams();
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [error, setError] = useState("");
 const [showForgotPassword, setShowForgotPassword] = useState(false);
 const [forgotEmail, setForgotEmail] = useState("");
 const [message, setMessage] = useState("");
+
+useEffect(() => {
+  // Check for verification success and pre-fill email
+  const verified = searchParams.get('verified');
+  const emailParam = searchParams.get('email');
+  
+  if (verified === 'true') {
+    setMessage("🎉 Email verified successfully! You can now log in.");
+  }
+  
+  if (emailParam) {
+    setEmail(decodeURIComponent(emailParam));
+  }
+}, [searchParams]);
 
 async function onSubmit(e: React.FormEvent) {
 e.preventDefault();
