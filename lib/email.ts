@@ -125,15 +125,30 @@ async function getWeatherForecast(date: Date): Promise<string> {
         const humidity = matchForecast.main.humidity;
         
         let advice = "";
+        let gearReminder = "";
+        
         if (matchForecast.weather[0].main.includes("Rain")) {
           advice = " - Check court availability due to rain";
-        } else if (temp > 25) {
-          advice = " - Bring extra water and sun protection";
-        } else if (temp < 10) {
-          advice = " - Dress warmly for cooler conditions";
+          gearReminder = "Bring waterproof jacket and towels. Courts may be slippery.";
+        } else if (matchForecast.weather[0].main.includes("Snow")) {
+          advice = " - Courts may be closed due to snow";
+          gearReminder = "Dress in warm layers, waterproof shoes, and check court availability before travelling.";
+        } else if (temp > 28) {
+          advice = " - Very hot conditions";
+          gearReminder = "Bring extra water (2+ bottles), electrolyte drinks, sun hat, sunglasses, and SPF 30+ sunscreen. Consider light-colored clothing.";
+        } else if (temp > 23) {
+          advice = " - Warm conditions";
+          gearReminder = "Bring extra water, sun hat, and sunscreen. Light breathable clothing recommended.";
+        } else if (temp < 5) {
+          advice = " - Very cold conditions";
+          gearReminder = "Dress in warm layers, thermal base layers, winter jacket, warm-up suit, and gloves for between games.";
+        } else if (temp < 12) {
+          advice = " - Cool conditions";
+          gearReminder = "Dress in layers, bring a warm-up jacket, and consider long sleeves/leggings.";
         }
         
-        return `${description.charAt(0).toUpperCase() + description.slice(1)}, ${temp}°C, ${humidity}% humidity${advice}`;
+        const weatherInfo = `${description.charAt(0).toUpperCase() + description.slice(1)}, ${temp}°C, ${humidity}% humidity${advice}`;
+        return gearReminder ? `${weatherInfo}|GEAR|${gearReminder}` : weatherInfo;
       }
     }
     
@@ -207,6 +222,11 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
       return;
     }
 
+    // Parse weather forecast and gear recommendations
+    const [weatherInfo, gearRecommendation] = weatherForecast.includes('|GEAR|') 
+      ? weatherForecast.split('|GEAR|') 
+      : [weatherForecast, ''];
+
     // Send email to each recipient
     for (const recipient of recipients) {
       const isTeam1 = team1Members.some(m => m.id === recipient.id);
@@ -235,8 +255,15 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
 
             <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
               <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">🌤️ Weather Forecast</h3>
-              <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherForecast}</p>
+              <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherInfo}</p>
             </div>
+
+            ${gearRecommendation ? `
+            <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">🎾 Recommended Gear</h3>
+              <p style="margin: 0; color: #78350f; font-size: 14px;">${gearRecommendation}</p>
+            </div>
+            ` : ''}
 
             <div style="background: #fef7cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">📝 Important Reminders</h3>
@@ -278,9 +305,12 @@ Your tennis match has been scheduled:
 
 
 🌤️ Weather Forecast:
-${weatherForecast}
+${weatherInfo}
 
-📝 Important Reminders:
+${gearRecommendation ? `🎾 Recommended Gear:
+${gearRecommendation}
+
+` : ''}📝 Important Reminders:
 • Please remember to check the weather beforehand
 • Let your opponents know if you're running late - a walkover can be taken after 15 minutes no show  
 • Remember to bring water
@@ -303,6 +333,169 @@ Tennis Ladder Team
 
   } catch (error) {
     console.error('❌ Failed to send match confirmation email:', error);
+  }
+}
+
+export async function sendMatchCancellationEmail(matchDetails: MatchDetails, cancellationReason?: string) {
+  if (!resend) {
+    console.error('❌ Resend API key not configured');
+    return;
+  }
+
+  try {
+    // Get team members for both teams
+    const [team1Members, team2Members] = await Promise.all([
+      getTeamMembers(matchDetails.team1Id),
+      getTeamMembers(matchDetails.team2Id)
+    ]);
+
+    const team1Name = formatTeamName(team1Members);
+    const team2Name = formatTeamName(team2Members);
+    const matchDateTime = formatDateTime(matchDetails.startAt);
+
+    // Get ladder information to show end date
+    // First try to get the match from database to get the ladderId
+    let ladder = null;
+    try {
+      const matchFromDb = await prisma.match.findUnique({
+        where: { id: matchDetails.id },
+        select: { ladderId: true }
+      });
+      
+      if (matchFromDb?.ladderId) {
+        ladder = await prisma.ladder.findUnique({
+          where: { id: matchFromDb.ladderId },
+          select: { endDate: true, name: true }
+        });
+      }
+    } catch (error) {
+      console.log('Could not fetch ladder information:', error);
+    }
+
+    const ladderEndDate = ladder?.endDate ? formatDateTime(ladder.endDate) : 'Check ladder schedule';
+    const rescheduleUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/?reschedule=${matchDetails.id}`;
+
+    // Collect all recipients who want match notifications
+    const recipients = [
+      ...team1Members.filter(member => member.receiveMatchNotifications),
+      ...team2Members.filter(member => member.receiveMatchNotifications)
+    ];
+
+    if (recipients.length === 0) {
+      console.log('ℹ️ No recipients want match notifications - skipping cancellation email');
+      return;
+    }
+
+    // Send email to each recipient
+    for (const recipient of recipients) {
+      const isTeam1 = team1Members.some(m => m.id === recipient.id);
+      const opponentTeamName = isTeam1 ? team2Name : team1Name;
+      const recipientName = recipient.name || recipient.email;
+
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1f2937;">
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: bold;">❌ Match Cancelled</h1>
+            <p style="margin: 8px 0 0 0; opacity: 0.9;">Your tennis match has been cancelled</p>
+          </div>
+          
+          <div style="background: white; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            <h2 style="color: #dc2626; margin: 0 0 16px 0; font-size: 18px;">Hi ${recipientName}!</h2>
+            
+            <p style="margin: 16px 0; color: #374151; line-height: 1.6;">
+              Unfortunately, your tennis match has been cancelled. Here are the details of the cancelled match:
+            </p>
+
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #ef4444;">
+              <h3 style="color: #991b1b; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">Cancelled Match Details</h3>
+              <div style="space-y: 8px;">
+                <p style="margin: 4px 0; color: #7f1d1d;"><strong style="color: #991b1b;">Date & Time:</strong> ${matchDateTime}</p>
+                <p style="margin: 4px 0; color: #7f1d1d;"><strong style="color: #991b1b;">Your Team:</strong> ${isTeam1 ? team1Name : team2Name}</p>
+                <p style="margin: 4px 0; color: #7f1d1d;"><strong style="color: #991b1b;">Opponents:</strong> ${opponentTeamName}</p>
+                <p style="margin: 4px 0; color: #7f1d1d;"><strong style="color: #991b1b;">Match ID:</strong> #${matchDetails.id.slice(-6)}</p>
+                ${cancellationReason ? `<p style="margin: 4px 0; color: #7f1d1d;"><strong style="color: #991b1b;">Reason:</strong> ${cancellationReason}</p>` : ''}
+              </div>
+            </div>
+
+            <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+              <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">⏰ Important Deadline</h3>
+              <p style="margin: 0; color: #0f172a; font-size: 14px;">
+                <strong>Ladder ends:</strong> ${ladderEndDate}<br>
+                Please reschedule as soon as possible to avoid missing your chance to play this season.
+              </p>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${rescheduleUrl}" 
+                 style="background: #0ea5e9; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+                Reschedule Match
+              </a>
+            </div>
+
+            <div style="background: #fef7cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">💡 Next Steps</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #78350f;">
+                <li style="margin-bottom: 6px;">Use the reschedule button above to find a new time</li>
+                <li style="margin-bottom: 6px;">Coordinate with your opponents for available dates</li>
+                <li style="margin-bottom: 6px;">Book early - popular time slots fill up quickly</li>
+                <li>Contact support if you need help with rescheduling</li>
+              </ul>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+            
+            <p style="margin: 0; color: #6b7280; font-size: 14px; text-align: center;">
+              Sorry for the inconvenience! 🎾<br>
+              <span style="color: #9ca3af;">Tennis Ladder Team</span>
+            </p>
+          </div>
+        </div>
+      `;
+
+      const textContent = `
+❌ Match Cancelled
+
+Hi ${recipientName}!
+
+Unfortunately, your tennis match has been cancelled. Here are the details:
+
+📅 Date & Time: ${matchDateTime}
+👥 Your Team: ${isTeam1 ? team1Name : team2Name}  
+🆚 Opponents: ${opponentTeamName}
+🔗 Match ID: #${matchDetails.id.slice(-6)}
+${cancellationReason ? `❗ Reason: ${cancellationReason}` : ''}
+
+⏰ Important Deadline:
+Ladder ends: ${ladderEndDate}
+Please reschedule as soon as possible to avoid missing your chance to play this season.
+
+🔗 Reschedule Match:
+${rescheduleUrl}
+
+💡 Next Steps:
+• Use the reschedule link above to find a new time
+• Coordinate with your opponents for available dates  
+• Book early - popular time slots fill up quickly
+• Contact support if you need help with rescheduling
+
+Sorry for the inconvenience! 🎾
+
+Tennis Ladder Team
+      `;
+
+      await resend.emails.send({
+        from: 'Tennis Ladder <noreply@ladderschedule.com>',
+        to: [recipient.email],
+        subject: `❌ Match Cancelled - ${team1Name} vs ${team2Name}`,
+        html: htmlContent,
+        text: textContent
+      });
+
+      console.log(`✅ Match cancellation email sent to ${recipient.email}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to send match cancellation email:', error);
   }
 }
 

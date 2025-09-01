@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendMatchCancellationEmail } from "@/lib/email";
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const { matchId } = await req.json();
+    const { matchId, reason } = await req.json();
     
     if (!matchId) {
       return NextResponse.json({ error: "matchId required" }, { status: 400 });
@@ -41,6 +42,16 @@ export async function DELETE(req: NextRequest) {
     if (match.team1Id !== myTeamId && match.team2Id !== myTeamId) {
       return NextResponse.json({ error: "You can only cancel matches involving your team" }, { status: 403 });
     }
+    
+    // Send cancellation email before deleting the match (async, don't wait)
+    sendMatchCancellationEmail({
+      id: match.id,
+      startAt: match.startAt,
+      team1Id: match.team1Id,
+      team2Id: match.team2Id
+    }, reason).catch(error => {
+      console.error('Failed to send match cancellation email:', error);
+    });
     
     // Delete the match
     await prisma.match.delete({
