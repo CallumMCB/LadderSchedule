@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendMatchConfirmationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -63,6 +64,16 @@ export async function POST(req: NextRequest) {
         confirmed: true,
         ladderId: currentUser.ladderId
       }
+    });
+
+    // Send confirmation email to all team members (async, don't wait)
+    sendMatchConfirmationEmail({
+      id: match.id,
+      startAt: match.startAt,
+      team1Id: match.team1Id,
+      team2Id: match.team2Id
+    }).catch(error => {
+      console.error('Failed to send match confirmation email:', error);
     });
 
     return NextResponse.json({ 

@@ -165,7 +165,7 @@ export default function RegisterPage() {
                     onCheckedChange={setReceiveMarketing}
                   />
                   <label htmlFor="marketing" className="text-sm">
-                    Receive occasional marketing and info emails (optional)
+                    Receive occasional updates and offers
                   </label>
                 </div>
               </div>
