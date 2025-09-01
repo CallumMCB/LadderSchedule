@@ -55,7 +55,7 @@ async function fetchMetOfficeWeather() {
     {
       headers: {
         'accept': 'application/json',
-        'Authorization': `Bearer ${MET_OFFICE_API_KEY}`
+        'apikey': MET_OFFICE_API_KEY
       }
     }
   );
