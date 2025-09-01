@@ -73,28 +73,109 @@ export function formatDateTime(date: Date): string {
 
 async function getWeatherForecast(date: Date): Promise<string> {
   try {
-    // For now, we'll use a simple date-based approach
-    // In the future, this could integrate with a weather API
-    const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-    const month = date.getMonth() + 1;
+    // Leamington Spa coordinates
+    const latitude = 52.2928;
+    const longitude = -1.5317;
     
-    // Basic UK seasonal weather patterns for Leamington
-    let forecast = "";
+    // Get the date for the match (format: YYYY-MM-DD)
+    const matchDate = date.toISOString().split('T')[0];
     
-    if (month >= 12 || month <= 2) {
-      forecast = "Cold and potentially wet - dress warmly and check for court availability";
-    } else if (month >= 3 && month <= 5) {
-      forecast = "Mild spring weather - layers recommended as temperatures can vary";
-    } else if (month >= 6 && month <= 8) {
-      forecast = "Warm summer conditions - bring sun protection and extra water";
-    } else {
-      forecast = "Autumn weather - check for rain and dress appropriately for cooler temperatures";
+    // Try to get weather from Met Office API (free tier)
+    // Note: This uses the Met Office DataPoint API which is free but requires registration
+    const metOfficeResponse = await fetch(
+      `http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/forecast?res=daily&lat=${latitude}&lon=${longitude}&key=${process.env.MET_OFFICE_API_KEY}`
+    ).catch(() => null);
+    
+    if (metOfficeResponse?.ok && process.env.MET_OFFICE_API_KEY) {
+      const weatherData = await metOfficeResponse.json();
+      
+      // Process Met Office data (simplified)
+      if (weatherData?.SiteRep?.DV?.Location?.Period) {
+        const periods = weatherData.SiteRep.DV.Location.Period;
+        const matchPeriod = periods.find((p: any) => p.value?.startsWith(matchDate));
+        
+        if (matchPeriod?.Rep?.[0]) {
+          const weather = matchPeriod.Rep[0];
+          const temp = weather.Dm ? `${weather.Dm}°C` : '';
+          const condition = getWeatherDescription(weather.W);
+          const rainChance = weather.PPd ? `${weather.PPd}% chance of rain` : '';
+          
+          return `${condition}${temp ? `, ${temp}` : ''}${rainChance ? `, ${rainChance}` : ''}`;
+        }
+      }
     }
     
-    return forecast;
+    // Fallback to OpenWeatherMap API (more reliable free tier)
+    const openWeatherResponse = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+    ).catch(() => null);
+    
+    if (openWeatherResponse?.ok && process.env.OPENWEATHER_API_KEY) {
+      const weatherData = await openWeatherResponse.json();
+      
+      // Find forecast for the match date
+      const matchForecast = weatherData.list?.find((item: any) => {
+        const forecastDate = new Date(item.dt * 1000);
+        return forecastDate.toDateString() === date.toDateString();
+      });
+      
+      if (matchForecast) {
+        const temp = Math.round(matchForecast.main.temp);
+        const description = matchForecast.weather[0].description;
+        const humidity = matchForecast.main.humidity;
+        
+        let advice = "";
+        if (matchForecast.weather[0].main.includes("Rain")) {
+          advice = " - Check court availability due to rain";
+        } else if (temp > 25) {
+          advice = " - Bring extra water and sun protection";
+        } else if (temp < 10) {
+          advice = " - Dress warmly for cooler conditions";
+        }
+        
+        return `${description.charAt(0).toUpperCase() + description.slice(1)}, ${temp}°C, ${humidity}% humidity${advice}`;
+      }
+    }
+    
+    // Final fallback - seasonal advice
+    const month = date.getMonth() + 1;
+    if (month >= 12 || month <= 2) {
+      return "Winter conditions expected - dress warmly and check for court availability";
+    } else if (month >= 3 && month <= 5) {
+      return "Spring weather - layers recommended as temperatures can vary";
+    } else if (month >= 6 && month <= 8) {
+      return "Summer conditions - bring sun protection and extra water";
+    } else {
+      return "Autumn weather - check for rain and dress appropriately";
+    }
+    
   } catch (error) {
+    console.error('Weather forecast error:', error);
     return "Please check the weather forecast before your match";
   }
+}
+
+function getWeatherDescription(weatherCode: string): string {
+  // Met Office weather codes to descriptions
+  const codes: { [key: string]: string } = {
+    '0': 'Clear night',
+    '1': 'Sunny day',
+    '2': 'Partly cloudy',
+    '3': 'Partly cloudy',
+    '5': 'Mist',
+    '6': 'Fog',
+    '7': 'Cloudy',
+    '8': 'Overcast',
+    '9': 'Light rain shower',
+    '10': 'Light rain',
+    '11': 'Drizzle',
+    '12': 'Light rain',
+    '13': 'Heavy rain shower',
+    '14': 'Heavy rain',
+    '15': 'Heavy rain'
+  };
+  
+  return codes[weatherCode] || 'Variable conditions';
 }
 
 export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
