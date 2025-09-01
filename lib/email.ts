@@ -74,7 +74,9 @@ export function formatDateTime(date: Date): string {
 async function getWeatherForecast(date: Date): Promise<string> {
   try {
     // First, try to get weather from cache
-    const matchDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); // Normalize to midnight
+    // Convert to British time and normalize to midnight
+    const britishDate = new Date(date.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+    const matchDate = new Date(britishDate.getFullYear(), britishDate.getMonth(), britishDate.getDate());
     
     const cachedWeather = await prisma.weatherCache.findUnique({
       where: { date: matchDate }

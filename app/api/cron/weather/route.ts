@@ -95,12 +95,14 @@ async function fetchMetOfficeWeather() {
     {
       headers: {
         'accept': 'application/json',
-        'apikey': MET_OFFICE_API_KEY
+        'Authorization': `Bearer ${MET_OFFICE_API_KEY}`
       }
     }
   );
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Met Office API error response:', errorText);
     throw new Error(`Met Office API error: ${response.status} ${response.statusText}`);
   }
 
@@ -136,17 +138,19 @@ export async function POST(request: NextRequest) {
     
     // Process each day's forecast (keep next 14 days)
     const now = new Date();
-    const maxDate = new Date(now);
+    const britishNow = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+    const maxDate = new Date(britishNow);
     maxDate.setDate(maxDate.getDate() + 14);
     
     for (const forecast of timeSeries) {
       const forecastDate = new Date(forecast.time);
+      const britishForecastDate = new Date(forecastDate.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
       
       // Only process forecasts within the next 14 days
-      if (forecastDate > maxDate) continue;
+      if (britishForecastDate > maxDate) continue;
       
-      // Normalize to midnight UTC for consistent date matching
-      const normalizedDate = new Date(forecastDate.getFullYear(), forecastDate.getMonth(), forecastDate.getDate());
+      // Normalize to midnight British time for consistent date matching
+      const normalizedDate = new Date(britishForecastDate.getFullYear(), britishForecastDate.getMonth(), britishForecastDate.getDate());
       
       try {
         // Upsert weather cache entry
@@ -184,8 +188,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Clean up old weather data (older than 1 day)
-    const cutoffDate = new Date(now);
+    // Clean up old weather data (older than 1 day) - using British time
+    const cutoffDate = new Date(britishNow);
     cutoffDate.setDate(cutoffDate.getDate() - 1);
     
     const deletedCount = await prisma.weatherCache.deleteMany({
