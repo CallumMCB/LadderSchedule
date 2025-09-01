@@ -71,6 +71,32 @@ export function formatDateTime(date: Date): string {
   });
 }
 
+async function getWeatherForecast(date: Date): Promise<string> {
+  try {
+    // For now, we'll use a simple date-based approach
+    // In the future, this could integrate with a weather API
+    const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+    const month = date.getMonth() + 1;
+    
+    // Basic UK seasonal weather patterns for Leamington
+    let forecast = "";
+    
+    if (month >= 12 || month <= 2) {
+      forecast = "Cold and potentially wet - dress warmly and check for court availability";
+    } else if (month >= 3 && month <= 5) {
+      forecast = "Mild spring weather - layers recommended as temperatures can vary";
+    } else if (month >= 6 && month <= 8) {
+      forecast = "Warm summer conditions - bring sun protection and extra water";
+    } else {
+      forecast = "Autumn weather - check for rain and dress appropriately for cooler temperatures";
+    }
+    
+    return forecast;
+  } catch (error) {
+    return "Please check the weather forecast before your match";
+  }
+}
+
 export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
   if (!resend) {
     console.error('❌ Resend API key not configured');
@@ -87,6 +113,7 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
     const team1Name = formatTeamName(team1Members);
     const team2Name = formatTeamName(team2Members);
     const matchDateTime = formatDateTime(matchDetails.startAt);
+    const weatherForecast = await getWeatherForecast(matchDetails.startAt);
 
     // Collect all recipients who want match notifications
     const recipients = [
@@ -125,13 +152,17 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
               </div>
             </div>
 
+            <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+              <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">🌤️ Weather Forecast</h3>
+              <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherForecast}</p>
+            </div>
+
             <div style="background: #fef7cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">📝 Important Reminders</h3>
               <ul style="margin: 0; padding-left: 20px; color: #78350f;">
-                <li style="margin-bottom: 4px;">Please arrive 10 minutes early to warm up</li>
-                <li style="margin-bottom: 4px;">Remember to bring water and appropriate tennis gear</li>
-                <li style="margin-bottom: 4px;">If you need to reschedule, please do so at least 24 hours in advance</li>
-                <li>Check the weather forecast and dress accordingly</li>
+                <li style="margin-bottom: 6px;">Please remember to check the weather beforehand</li>
+                <li style="margin-bottom: 6px;">Let your opponents know if you're running late - a walkover can be taken after 15 minutes no show</li>
+                <li style="margin-bottom: 6px;">Remember to bring water</li>
               </ul>
             </div>
 
@@ -165,11 +196,13 @@ Your tennis match has been scheduled:
 🔗 Match ID: #${matchDetails.id.slice(-6)}
 
 
+🌤️ Weather Forecast:
+${weatherForecast}
+
 📝 Important Reminders:
-• Please arrive 10 minutes early to warm up
-• Remember to bring water and appropriate tennis gear  
-• If you need to reschedule, please do so at least 24 hours in advance
-• Check the weather forecast and dress accordingly
+• Please remember to check the weather beforehand
+• Let your opponents know if you're running late - a walkover can be taken after 15 minutes no show  
+• Remember to bring water
 
 Good luck with your match! 🏆
 
