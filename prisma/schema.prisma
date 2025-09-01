@@ -88,3 +88,21 @@ ladder Ladder? @relation(fields: [ladderId], references: [id])
 @@index([startAt])
 @@index([ladderId])
 }
+
+model WeatherCache {
+id String @id @default(cuid())
+date DateTime // Date for this forecast (midnight UTC)
+temperature Int // Max temperature in Celsius
+minTemperature Int? // Min temperature in Celsius
+weatherType String // Weather description (e.g., "Sunny", "Light rain")
+precipitationProbability Int? // Chance of rain (0-100)
+windSpeed Int? // Wind speed in mph
+windDirection String? // Wind direction (e.g., "SW")
+uvIndex Int? // UV index (0-11+)
+visibility String? // Visibility description
+humidity Int? // Relative humidity percentage
+updatedAt DateTime @default(now()) // When this record was last updated
+
+@@unique([date])
+@@index([date])
+}

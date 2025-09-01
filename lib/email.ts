@@ -73,86 +73,54 @@ export function formatDateTime(date: Date): string {
 
 async function getWeatherForecast(date: Date): Promise<string> {
   try {
-    // Leamington Spa coordinates
-    const latitude = 52.2928;
-    const longitude = -1.5317;
+    // First, try to get weather from cache
+    const matchDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); // Normalize to midnight
     
-    // Get the date for the match (format: YYYY-MM-DD)
-    const matchDate = date.toISOString().split('T')[0];
+    const cachedWeather = await prisma.weatherCache.findUnique({
+      where: { date: matchDate }
+    });
     
-    // Try to get weather from Met Office API (free tier)
-    // Note: This uses the Met Office DataPoint API which is free but requires registration
-    const metOfficeResponse = await fetch(
-      `http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/forecast?res=daily&lat=${latitude}&lon=${longitude}&key=${process.env.MET_OFFICE_API_KEY}`
-    ).catch(() => null);
-    
-    if (metOfficeResponse?.ok && process.env.MET_OFFICE_API_KEY) {
-      const weatherData = await metOfficeResponse.json();
+    if (cachedWeather) {
+      // Use cached weather data
+      const temp = cachedWeather.temperature;
+      const description = cachedWeather.weatherType;
+      const humidity = cachedWeather.humidity;
+      const rainChance = cachedWeather.precipitationProbability;
       
-      // Process Met Office data (simplified)
-      if (weatherData?.SiteRep?.DV?.Location?.Period) {
-        const periods = weatherData.SiteRep.DV.Location.Period;
-        const matchPeriod = periods.find((p: any) => p.value?.startsWith(matchDate));
-        
-        if (matchPeriod?.Rep?.[0]) {
-          const weather = matchPeriod.Rep[0];
-          const temp = weather.Dm ? `${weather.Dm}°C` : '';
-          const condition = getWeatherDescription(weather.W);
-          const rainChance = weather.PPd ? `${weather.PPd}% chance of rain` : '';
-          
-          return `${condition}${temp ? `, ${temp}` : ''}${rainChance ? `, ${rainChance}` : ''}`;
-        }
+      let advice = "";
+      let gearReminder = "";
+      
+      // Weather-based advice
+      if (description.toLowerCase().includes("rain") || (rainChance && rainChance > 50)) {
+        advice = " - Check court availability due to rain";
+        gearReminder = "Bring waterproof jacket and towels. Courts may be slippery.";
+      } else if (description.toLowerCase().includes("snow")) {
+        advice = " - Courts may be closed due to snow";
+        gearReminder = "Dress in warm layers, waterproof shoes, and check court availability before travelling.";
+      } else if (temp > 28) {
+        advice = " - Very hot conditions";
+        gearReminder = "Bring extra water (2+ bottles), electrolyte drinks, sun hat, sunglasses, and SPF 30+ sunscreen. Consider light-colored clothing.";
+      } else if (temp > 23) {
+        advice = " - Warm conditions";
+        gearReminder = "Bring extra water, sun hat, and sunscreen. Light breathable clothing recommended.";
+      } else if (temp < 5) {
+        advice = " - Very cold conditions";
+        gearReminder = "Dress in warm layers, thermal base layers, winter jacket, warm-up suit, and gloves for between games.";
+      } else if (temp < 12) {
+        advice = " - Cool conditions";
+        gearReminder = "Dress in layers, bring a warm-up jacket, and consider long sleeves/leggings.";
       }
+      
+      const tempRange = cachedWeather.minTemperature ? `${cachedWeather.minTemperature}-${temp}°C` : `${temp}°C`;
+      const humidityText = humidity ? `, ${humidity}% humidity` : '';
+      const rainText = rainChance ? `, ${rainChance}% chance of rain` : '';
+      
+      const weatherInfo = `${description}, ${tempRange}${humidityText}${rainText}${advice}`;
+      return gearReminder ? `${weatherInfo}|GEAR|${gearReminder}` : weatherInfo;
     }
     
-    // Fallback to OpenWeatherMap API (more reliable free tier)
-    const openWeatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
-    ).catch(() => null);
-    
-    if (openWeatherResponse?.ok && process.env.OPENWEATHER_API_KEY) {
-      const weatherData = await openWeatherResponse.json();
-      
-      // Find forecast for the match date
-      const matchForecast = weatherData.list?.find((item: any) => {
-        const forecastDate = new Date(item.dt * 1000);
-        return forecastDate.toDateString() === date.toDateString();
-      });
-      
-      if (matchForecast) {
-        const temp = Math.round(matchForecast.main.temp);
-        const description = matchForecast.weather[0].description;
-        const humidity = matchForecast.main.humidity;
-        
-        let advice = "";
-        let gearReminder = "";
-        
-        if (matchForecast.weather[0].main.includes("Rain")) {
-          advice = " - Check court availability due to rain";
-          gearReminder = "Bring waterproof jacket and towels. Courts may be slippery.";
-        } else if (matchForecast.weather[0].main.includes("Snow")) {
-          advice = " - Courts may be closed due to snow";
-          gearReminder = "Dress in warm layers, waterproof shoes, and check court availability before travelling.";
-        } else if (temp > 28) {
-          advice = " - Very hot conditions";
-          gearReminder = "Bring extra water (2+ bottles), electrolyte drinks, sun hat, sunglasses, and SPF 30+ sunscreen. Consider light-colored clothing.";
-        } else if (temp > 23) {
-          advice = " - Warm conditions";
-          gearReminder = "Bring extra water, sun hat, and sunscreen. Light breathable clothing recommended.";
-        } else if (temp < 5) {
-          advice = " - Very cold conditions";
-          gearReminder = "Dress in warm layers, thermal base layers, winter jacket, warm-up suit, and gloves for between games.";
-        } else if (temp < 12) {
-          advice = " - Cool conditions";
-          gearReminder = "Dress in layers, bring a warm-up jacket, and consider long sleeves/leggings.";
-        }
-        
-        const weatherInfo = `${description.charAt(0).toUpperCase() + description.slice(1)}, ${temp}°C, ${humidity}% humidity${advice}`;
-        return gearReminder ? `${weatherInfo}|GEAR|${gearReminder}` : weatherInfo;
-      }
-    }
-    
-    // Final fallback - seasonal advice
+    // If no cached data, fall back to seasonal advice
+    console.log(`No cached weather data for ${matchDate.toISOString().split('T')[0]}`);
     const month = date.getMonth() + 1;
     if (month >= 12 || month <= 2) {
       return "Winter conditions expected - dress warmly and check for court availability";
