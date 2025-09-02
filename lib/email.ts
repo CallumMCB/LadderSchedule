@@ -493,11 +493,11 @@ ${rescheduleUrl}
 
 Sorry for the inconvenience! 🎾
 
-Tennis Ladder Team
+Tennis Schedule Team
       `;
 
       await resend.emails.send({
-        from: 'Tennis Ladder <noreply@ladderschedule.com>',
+        from: 'Tennis Schedule <noreply@ladderschedule.com>',
         to: [recipient.email],
         subject: `❌ Match Cancelled - ${team1Name} vs ${team2Name}`,
         html: htmlContent,

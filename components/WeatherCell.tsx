@@ -6,14 +6,18 @@ import { getWeatherEmoji, getWindDirectionEmoji } from "@/lib/weather";
 interface WeatherCellProps {
   slotKey: string;
   className?: string;
+  showWeather?: boolean;
 }
 
-export function WeatherCell({ slotKey, className = "" }: WeatherCellProps) {
+export function WeatherCell({ slotKey, className = "", showWeather = true }: WeatherCellProps) {
   const [weatherInfo, setWeatherInfo] = useState<{
     emoji: string;
     temperature: string;
     wind: string;
   } | null>(null);
+  
+  const [detailedWeather, setDetailedWeather] = useState<any>(null);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     // Only fetch for future times
@@ -43,6 +47,7 @@ export function WeatherCell({ slotKey, className = "" }: WeatherCellProps) {
               temperature: `${Math.round(matchingWeather.temperature)}°`,
               wind: `${getWindDirectionEmoji(matchingWeather.windDirection)}${Math.round(matchingWeather.windSpeed || 0)}`
             });
+            setDetailedWeather(matchingWeather);
           }
         }
       } catch (error) {
@@ -53,14 +58,71 @@ export function WeatherCell({ slotKey, className = "" }: WeatherCellProps) {
     fetchWeather();
   }, [slotKey]);
 
-  if (!weatherInfo) return null;
+  if (!weatherInfo || !showWeather) return null;
 
   return (
-    <div className={`absolute top-0 right-0 p-1 pointer-events-none z-10 ${className}`}>
-      <div className="text-xs bg-white bg-opacity-90 rounded-sm px-1 py-0.5 shadow-sm flex items-center gap-1">
-        <span>{weatherInfo.emoji}</span>
-        <span className="font-medium">{weatherInfo.temperature}</span>
-        <span className="text-gray-600">{weatherInfo.wind}</span>
+    <div className={`absolute top-0 right-0 p-0.5 pointer-events-auto z-10 ${className}`}>
+      {/* Weather Column - Vertical Layout */}
+      <div 
+        className="flex flex-col items-center bg-white bg-opacity-90 rounded-sm px-1 py-1 shadow-sm cursor-help relative"
+        onMouseEnter={() => setShowPopup(true)}
+        onMouseLeave={() => setShowPopup(false)}
+      >
+        <span className="text-base leading-none">{weatherInfo.emoji}</span>
+        <span className="text-xs font-medium leading-none mt-0.5">{weatherInfo.temperature}</span>
+        <span className="text-xs text-gray-600 leading-none mt-0.5">{weatherInfo.wind}</span>
+        
+        {/* Detailed Weather Popup */}
+        {showPopup && detailedWeather && (
+          <div className="absolute top-0 right-full mr-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-64 z-50">
+            <div className="text-sm font-semibold text-gray-800 mb-2">
+              {new Date(slotKey).toLocaleString('en-GB', {
+                weekday: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Europe/London'
+              })}
+            </div>
+            
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{weatherInfo.emoji}</span>
+                <span className="font-medium">{detailedWeather.weatherType}</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>Temperature: <span className="font-medium">{Math.round(detailedWeather.temperature)}°C</span></div>
+                {detailedWeather.feelsLikeTemperature && (
+                  <div>Feels like: <span className="font-medium">{Math.round(detailedWeather.feelsLikeTemperature)}°C</span></div>
+                )}
+                
+                {detailedWeather.precipitationProbability && (
+                  <div>Rain chance: <span className="font-medium">{detailedWeather.precipitationProbability}%</span></div>
+                )}
+                
+                <div>Wind: <span className="font-medium">{Math.round(detailedWeather.windSpeed || 0)} mph</span></div>
+                
+                {detailedWeather.humidity && (
+                  <div>Humidity: <span className="font-medium">{Math.round(detailedWeather.humidity)}%</span></div>
+                )}
+                
+                {detailedWeather.visibility && (
+                  <div>Visibility: <span className="font-medium">{Math.round(detailedWeather.visibility/1000)}km</span></div>
+                )}
+                
+                {detailedWeather.uvIndex !== null && detailedWeather.uvIndex !== undefined && (
+                  <div>UV Index: <span className="font-medium">{detailedWeather.uvIndex}</span></div>
+                )}
+              </div>
+              
+              {detailedWeather.precipitationProbability > 30 && (
+                <div className="mt-2 p-2 bg-blue-50 rounded text-blue-800">
+                  ⚠️ Possible rain - consider bringing weather protection
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

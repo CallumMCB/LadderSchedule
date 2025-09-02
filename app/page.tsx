@@ -148,6 +148,9 @@ export default function TennisLadderScheduler() {
   const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
   const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
   
+  // Weather display state
+  const [showWeather, setShowWeather] = useState(true); // Show weather by default
+  
   // Note: Weather display now handled by individual WeatherCell components
   const [showHiddenTeams, setShowHiddenTeams] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
@@ -1564,6 +1567,20 @@ export default function TennisLadderScheduler() {
             </Button>
           </div>
         </div>
+        
+        <div className="flex flex-row items-center gap-3 text-sm">
+          <span className="text-gray-600 whitespace-nowrap">Display:</span>
+          <div className="flex gap-2">
+            <Button
+              variant={showWeather ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowWeather(!showWeather)}
+              className="text-xs"
+            >
+              {showWeather ? "Hide" : "Show"} weather
+            </Button>
+          </div>
+        </div>
       </div>
 
       <AvailabilityGrid 
@@ -1588,6 +1605,7 @@ export default function TennisLadderScheduler() {
         showEarlyTimes={showEarlyTimes}
         showLateTimes={showLateTimes}
         showHiddenTeams={showHiddenTeams}
+        showWeather={showWeather}
       />
 
       <details>
@@ -2042,6 +2060,19 @@ export default function TennisLadderScheduler() {
           </div>
         </div>
       )}
+      
+      {/* Brownian Solutions Branding */}
+      <div className="mt-6 text-center text-xs text-muted-foreground border-t pt-4">
+        Made with ❤️ by{' '}
+        <a 
+          href="https://brownian.solutions" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="hover:text-foreground transition-colors font-medium"
+        >
+          Brownian Solutions
+        </a>
+      </div>
     </div>
   );
 
@@ -2196,7 +2227,8 @@ function AvailabilityGrid({
   ladderInfo,
   showEarlyTimes,
   showLateTimes,
-  showHiddenTeams
+  showHiddenTeams,
+  showWeather
 }: { 
   days: Date[]; 
   myAvail: Set<string>; 
@@ -2242,6 +2274,7 @@ function AvailabilityGrid({
   showEarlyTimes: boolean;
   showLateTimes: boolean;
   showHiddenTeams: boolean;
+  showWeather: boolean;
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
@@ -2827,7 +2860,7 @@ function AvailabilityGrid({
                     return (
                       <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel0} />
-                        <WeatherCell slotKey={key} />
+                        <WeatherCell slotKey={key} showWeather={showWeather} />
                       </td>
                     );
                   })}
@@ -2846,7 +2879,7 @@ function AvailabilityGrid({
                     return (
                       <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel30} />
-                        <WeatherCell slotKey={key} />
+                        <WeatherCell slotKey={key} showWeather={showWeather} />
                       </td>
                     );
                   })}
