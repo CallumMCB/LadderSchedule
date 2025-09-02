@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Link from "next/link";
 import MobileNav from "./components/MobileNav";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = { title: "Tennis Ladder", description: "Weekly scheduler" };
 
@@ -57,6 +58,7 @@ return (
 </div>
 </Providers>
 </div>
+<Analytics />
 </body>
 </html>
 );
