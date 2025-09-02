@@ -320,7 +320,7 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
 
             <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
               <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">🌤️ Weather Forecast</h3>
-              <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherInfo}</p>
+              <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherInfo.replace(/\n/g, '<br>')}</p>
             </div>
 
             ${gearRecommendation ? `
@@ -346,10 +346,18 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
 
 
             <div style="text-align: center; margin: 24px 0;">
-              <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring" 
-                 style="background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                View Match Details
-              </a>
+              <div style="display: inline-block; margin: 0 8px;">
+                <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring" 
+                   style="background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+                  View Match Details
+                </a>
+              </div>
+              <div style="display: inline-block; margin: 0 8px;">
+                <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring" 
+                   style="background: #0ea5e9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
+                  Report Score
+                </a>
+              </div>
             </div>
             
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
@@ -398,6 +406,10 @@ ${gearRecommendation}
 • Let your opponents know if you're running late 
     a walkover can be taken after 15 minutes no show  
 • Remember to bring water
+
+🔗 Match Actions:
+• View Match Details: ${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring
+• Report Score: ${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring
 
 Good luck with your match! 🏆
 
