@@ -8,6 +8,7 @@ interface TeamMember {
   id: string;
   email: string;
   name: string | null;
+  phone: string | null;
   receiveMatchNotifications: boolean;
 }
 
@@ -30,6 +31,7 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
         id: true,
         email: true,
         name: true,
+        phone: true,
         receiveMatchNotifications: true
       }
     });
@@ -42,6 +44,7 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
         id: true,
         email: true,
         name: true,
+        phone: true,
         receiveMatchNotifications: true
       }
     });
@@ -289,6 +292,32 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
               </div>
             </div>
 
+            <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <h3 style="color: #374151; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">📞 Contact Details</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <h4 style="color: #059669; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${team1Name}</h4>
+                  ${team1Members.map(member => `
+                    <div style="margin-bottom: 8px; font-size: 14px;">
+                      <div style="color: #374151; font-weight: 500;">${member.name || 'Player'}</div>
+                      <div style="color: #6b7280;">📧 ${member.email}</div>
+                      ${member.phone ? `<div style="color: #6b7280;">📱 ${member.phone}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+                <div>
+                  <h4 style="color: #059669; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${team2Name}</h4>
+                  ${team2Members.map(member => `
+                    <div style="margin-bottom: 8px; font-size: 14px;">
+                      <div style="color: #374151; font-weight: 500;">${member.name || 'Player'}</div>
+                      <div style="color: #6b7280;">📧 ${member.email}</div>
+                      ${member.phone ? `<div style="color: #6b7280;">📱 ${member.phone}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
             <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
               <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">🌤️ Weather Forecast</h3>
               <p style="margin: 0; color: #0f172a; font-size: 14px;">${weatherInfo}</p>
@@ -350,6 +379,13 @@ Your tennis match has been scheduled:
 🆚 Opponents: ${opponentTeamName}
 🔗 Match ID: #${matchDetails.id.slice(-6)}
 
+📞 Contact Details:
+
+${team1Name}:
+${team1Members.map(member => `• ${member.name || 'Player'} - 📧 ${member.email}${member.phone ? ` | 📱 ${member.phone}` : ''}`).join('\n')}
+
+${team2Name}:
+${team2Members.map(member => `• ${member.name || 'Player'} - 📧 ${member.email}${member.phone ? ` | 📱 ${member.phone}` : ''}`).join('\n')}
 
 🌤️ Weather Forecast:
 ${weatherInfo}
@@ -468,6 +504,32 @@ export async function sendMatchCancellationEmail(matchDetails: MatchDetails, can
               </div>
             </div>
 
+            <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <h3 style="color: #374151; margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">📞 Contact Details</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <h4 style="color: #dc2626; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${team1Name}</h4>
+                  ${team1Members.map(member => `
+                    <div style="margin-bottom: 8px; font-size: 14px;">
+                      <div style="color: #374151; font-weight: 500;">${member.name || 'Player'}</div>
+                      <div style="color: #6b7280;">📧 ${member.email}</div>
+                      ${member.phone ? `<div style="color: #6b7280;">📱 ${member.phone}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+                <div>
+                  <h4 style="color: #dc2626; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">${team2Name}</h4>
+                  ${team2Members.map(member => `
+                    <div style="margin-bottom: 8px; font-size: 14px;">
+                      <div style="color: #374151; font-weight: 500;">${member.name || 'Player'}</div>
+                      <div style="color: #6b7280;">📧 ${member.email}</div>
+                      ${member.phone ? `<div style="color: #6b7280;">📱 ${member.phone}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
             <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
               <h3 style="color: #0369a1; margin: 0 0 8px 0; font-size: 16px;">⏰ Important Deadline</h3>
               <p style="margin: 0; color: #0f172a; font-size: 14px;">
@@ -520,6 +582,14 @@ Unfortunately, your tennis match has been cancelled. Here are the details:
 🆚 Opponents: ${opponentTeamName}
 🔗 Match ID: #${matchDetails.id.slice(-6)}
 ${cancellationReason ? `❗ Reason: ${cancellationReason}` : ''}
+
+📞 Contact Details:
+
+${team1Name}:
+${team1Members.map(member => `• ${member.name || 'Player'} - 📧 ${member.email}${member.phone ? ` | 📱 ${member.phone}` : ''}`).join('\n')}
+
+${team2Name}:
+${team2Members.map(member => `• ${member.name || 'Player'} - 📧 ${member.email}${member.phone ? ` | 📱 ${member.phone}` : ''}`).join('\n')}
 
 ⏰ Important Deadline:
 Ladder ends: ${ladderEndDate}
