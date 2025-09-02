@@ -111,6 +111,14 @@ export async function POST(request: NextRequest) {
     maxDate.setDate(maxDate.getDate() + 14);
     
     console.log(`📅 Populating hourly weather from ${britishNow.toISOString()} to ${maxDate.toISOString()}`);
+    console.log(`🔢 API provided ${timeSeries.length} total hourly forecasts`);
+    
+    // Log the date range of available data
+    if (timeSeries.length > 0) {
+      const firstForecast = new Date(timeSeries[0].time);
+      const lastForecast = new Date(timeSeries[timeSeries.length - 1].time);
+      console.log(`📊 API data range: ${firstForecast.toISOString()} to ${lastForecast.toISOString()}`);
+    }
     
     // Process all available hourly forecasts
     for (const forecast of timeSeries) {
@@ -121,8 +129,10 @@ export async function POST(request: NextRequest) {
       const hourOfDay = britishDateTime.getHours();
       if (hourOfDay < 6 || hourOfDay > 22) continue;
       
-      // Only process future hours (from now onwards)
-      if (britishDateTime < britishNow) continue;
+      // Process from 6am today onwards (include ALL remaining tennis hours for today)
+      const todaySixAM = new Date(todayStart);
+      todaySixAM.setHours(6, 0, 0, 0);
+      if (britishDateTime < todaySixAM) continue;
       
       // Don't process beyond 14 days
       if (britishDateTime >= maxDate) continue;
