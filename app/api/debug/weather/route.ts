@@ -4,8 +4,12 @@ const MET_OFFICE_API_KEY = process.env.MET_OFFICE_API_KEY;
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('API Key length:', MET_OFFICE_API_KEY?.length);
-    console.log('API Key starts with:', MET_OFFICE_API_KEY?.substring(0, 20));
+    if (!MET_OFFICE_API_KEY) {
+      return NextResponse.json({ error: 'MET_OFFICE_API_KEY not configured' }, { status: 500 });
+    }
+
+    console.log('API Key length:', MET_OFFICE_API_KEY.length);
+    console.log('API Key starts with:', MET_OFFICE_API_KEY.substring(0, 20));
     
     // Leamington Spa coordinates
     const latitude = 52.2928;
@@ -18,21 +22,21 @@ export async function GET(request: NextRequest) {
         headers: {
           'accept': 'application/json',
           'apikey': MET_OFFICE_API_KEY
-        }
+        } as Record<string, string>
       },
       {
         name: 'Authorization Bearer',
         headers: {
           'accept': 'application/json',
           'Authorization': `Bearer ${MET_OFFICE_API_KEY}`
-        }
+        } as Record<string, string>
       },
       {
         name: 'x-api-key header',
         headers: {
           'accept': 'application/json',
           'x-api-key': MET_OFFICE_API_KEY
-        }
+        } as Record<string, string>
       }
     ];
 
@@ -62,8 +66,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      apiKeyConfigured: !!MET_OFFICE_API_KEY,
-      apiKeyLength: MET_OFFICE_API_KEY?.length,
+      apiKeyConfigured: true,
+      apiKeyLength: MET_OFFICE_API_KEY.length,
       results
     });
 
