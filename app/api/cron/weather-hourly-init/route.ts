@@ -70,28 +70,28 @@ async function fetchMetOfficeHourlyWeather() {
 }
 
 /**
- * Smart weather update endpoint with different update frequencies:
- * - Today: Update every hour
- * - This week (days 1-7): Update every 2 hours
- * - Next week (days 8-14): Update every 6 hours
- * - Only cache hours between 6am and 10pm (tennis playing hours)
+ * Initial population endpoint for hourly weather cache
+ * - Clears ALL existing hourly weather data
+ * - Populates complete 14-day hourly forecast (6am-10pm only)
+ * - One-time setup for the hourly weather system
  */
 export async function POST(request: NextRequest) {
   try {
     // Verify authorization
     const authHeader = request.headers.get('authorization');
-    const vercelCronHeader = request.headers.get('vercel-cron');
     const expectedToken = process.env.CRON_SECRET || 'development-secret';
     
-    const isAuthorized = vercelCronHeader === '1' || authHeader === `Bearer ${expectedToken}`;
-    
-    if (!isAuthorized) {
+    if (authHeader !== `Bearer ${expectedToken}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🌤️ Starting smart hourly weather cache update...');
+    console.log('🌤️ Starting initial hourly weather population...');
     
-    // Fetch weather data from Met Office
+    // Step 1: Clear ALL existing hourly weather data
+    const clearCount = await prisma.hourlyWeatherCache.deleteMany({});
+    console.log(`🧹 Cleared ${clearCount.count} existing hourly weather records`);
+    
+    // Step 2: Fetch fresh weather data from Met Office
     const weatherData = await fetchMetOfficeHourlyWeather();
     
     if (!weatherData?.features?.[0]?.properties?.timeSeries) {
@@ -99,74 +99,38 @@ export async function POST(request: NextRequest) {
     }
 
     const timeSeries = weatherData.features[0].properties.timeSeries;
-    let updatedCount = 0;
-    const updateType = request.nextUrl.searchParams.get('type') || 'smart';
+    let populatedCount = 0;
     
     // Get current British time
     const now = new Date();
     const britishNow = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
     const todayStart = new Date(britishNow.getFullYear(), britishNow.getMonth(), britishNow.getDate());
     
-    // Determine which hours to update based on update type
-    let shouldUpdate = (forecastHour: Date) => {
-      const hourOfDay = forecastHour.getHours();
-      
-      // Only process tennis playing hours (6am to 10pm)
-      if (hourOfDay < 6 || hourOfDay > 22) return false;
-      
-      const daysFromToday = Math.floor((forecastHour.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // Skip data older than today
-      if (daysFromToday < 0) return false;
-      
-      // Don't update beyond 14 days
-      if (daysFromToday >= 14) return false;
-      
-      if (updateType === 'all') return true;
-      
-      // Smart update logic based on proximity to today
-      if (daysFromToday === 0) {
-        // Today: always update (hourly updates)
-        return true;
-      } else if (daysFromToday <= 7) {
-        // This week (days 1-7): update every 2 hours
-        const hoursSinceLastUpdate = Math.floor((Date.now() - (forecastHour.getTime() - daysFromToday * 24 * 60 * 60 * 1000)) / (1000 * 60 * 60));
-        return hoursSinceLastUpdate >= 2;
-      } else {
-        // Next week (days 8-14): update every 6 hours  
-        const hoursSinceLastUpdate = Math.floor((Date.now() - (forecastHour.getTime() - daysFromToday * 24 * 60 * 60 * 1000)) / (1000 * 60 * 60));
-        return hoursSinceLastUpdate >= 6;
-      }
-    };
+    // Set cutoff to 14 days from today
+    const maxDate = new Date(todayStart);
+    maxDate.setDate(maxDate.getDate() + 14);
     
-    // Process hourly forecasts
+    console.log(`📅 Populating hourly weather from ${britishNow.toISOString()} to ${maxDate.toISOString()}`);
+    
+    // Process all available hourly forecasts
     for (const forecast of timeSeries) {
       const forecastDateTime = new Date(forecast.time);
       const britishDateTime = new Date(forecastDateTime.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
       
-      if (!shouldUpdate(britishDateTime)) continue;
+      // Only process tennis playing hours (6am to 10pm) 
+      const hourOfDay = britishDateTime.getHours();
+      if (hourOfDay < 6 || hourOfDay > 22) continue;
+      
+      // Only process future hours (from now onwards)
+      if (britishDateTime < britishNow) continue;
+      
+      // Don't process beyond 14 days
+      if (britishDateTime >= maxDate) continue;
       
       try {
-        // Upsert hourly weather cache entry
-        await prisma.hourlyWeatherCache.upsert({
-          where: { datetime: britishDateTime },
-          update: {
-            temperature: forecast.screenTemperature,
-            feelsLikeTemperature: forecast.feelsLikeTemperature,
-            weatherType: getWeatherDescription(forecast.significantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.probOfPrecipitation || 0),
-            precipitationRate: forecast.precipitationRate || 0,
-            windSpeed: forecast.windSpeed10m,
-            windDirection: Math.round(forecast.windDirectionFrom10m || 0),
-            windGust: forecast.windGustSpeed10m,
-            uvIndex: Math.round(forecast.uvIndex || 0),
-            visibility: Math.round(forecast.visibility || 0),
-            humidity: forecast.screenRelativeHumidity,
-            pressure: forecast.mslp,
-            dewPoint: forecast.screenDewPointTemperature,
-            updatedAt: new Date()
-          },
-          create: {
+        // Insert hourly weather cache entry
+        await prisma.hourlyWeatherCache.create({
+          data: {
             datetime: britishDateTime,
             temperature: forecast.screenTemperature,
             feelsLikeTemperature: forecast.feelsLikeTemperature,
@@ -184,39 +148,38 @@ export async function POST(request: NextRequest) {
           }
         });
         
-        updatedCount++;
+        populatedCount++;
+        
+        // Log every 24 hours (for visibility)
+        if (populatedCount % 17 === 0) { // Roughly 17 hours per day (6am-10pm)
+          const dayCount = Math.floor(populatedCount / 17) + 1;
+          console.log(`📈 Populated day ${dayCount} (${populatedCount} hours total)`);
+        }
+        
       } catch (error) {
-        console.error(`Failed to update hourly weather for ${britishDateTime.toISOString()}:`, error);
+        console.error(`Failed to populate hourly weather for ${britishDateTime.toISOString()}:`, error);
       }
     }
 
-    // Clean up ALL past weather data (anything before 6am today)
-    const cleanupCutoff = new Date(todayStart);
-    cleanupCutoff.setHours(6, 0, 0, 0); // 6am today in British time
+    const daysPopulated = Math.ceil(populatedCount / 17); // Roughly 17 hours per day
     
-    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
-      where: {
-        datetime: {
-          lt: cleanupCutoff
-        }
-      }
-    });
-
-    console.log(`✅ Hourly weather cache updated: ${updatedCount} forecasts (${updateType} mode), ${deletedCount.count} old records cleaned`);
+    console.log(`✅ Initial hourly weather population complete: ${populatedCount} hours across ${daysPopulated} days`);
     
     return NextResponse.json({
       success: true,
-      message: `Updated ${updatedCount} hourly weather forecasts (${updateType} mode), cleaned ${deletedCount.count} old records`,
-      updatedCount,
-      deletedCount: deletedCount.count,
-      updateType
+      message: `Initial population complete: cleared ${clearCount.count} old records, populated ${populatedCount} hourly forecasts across ${daysPopulated} days`,
+      clearedCount: clearCount.count,
+      populatedCount,
+      daysPopulated,
+      hoursPerDay: '6am-10pm (17 hours)',
+      period: `${britishNow.toDateString()} to ${maxDate.toDateString()}`
     });
 
   } catch (error) {
-    console.error('❌ Hourly weather cache update failed:', error);
+    console.error('❌ Initial hourly weather population failed:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to update hourly weather cache',
+        error: 'Failed to populate initial hourly weather cache',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
