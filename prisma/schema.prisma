@@ -106,3 +106,26 @@ updatedAt DateTime @default(now()) // When this record was last updated
 @@unique([date])
 @@index([date])
 }
+
+model HourlyWeatherCache {
+id String @id @default(cuid())
+datetime DateTime // Exact date and hour in British time
+temperature Float // Screen temperature in Celsius
+feelsLikeTemperature Float? // Feels like temperature in Celsius  
+weatherType String // Weather description from weather code
+precipitationProbability Int? // Chance of rain (0-100%)
+precipitationRate Float? // Precipitation rate (mm/h)
+windSpeed Float? // Wind speed in m/s
+windDirection Int? // Wind direction in degrees (0-360)
+windGust Float? // Wind gust speed in m/s
+uvIndex Int? // UV index (0-11+)
+visibility Int? // Visibility in metres
+humidity Float? // Relative humidity percentage
+pressure Float? // Mean sea level pressure in pascals
+dewPoint Float? // Dew point temperature in Celsius
+updatedAt DateTime @default(now()) // When this record was last updated
+
+@@unique([datetime])
+@@index([datetime])
+@@index([updatedAt])
+}

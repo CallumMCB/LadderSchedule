@@ -1,0 +1,17 @@
+name: Hourly Weather - Today
+
+on:
+  schedule:
+    # Runs every hour during tennis playing hours (6am-10pm GMT)
+    - cron: '0 6-22 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-today-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Today's Hourly Weather
+        run: |
+          curl -X POST "https://www.ladderschedule.com/api/cron/weather-hourly?type=today" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"

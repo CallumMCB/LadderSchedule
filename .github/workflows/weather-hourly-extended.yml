@@ -1,0 +1,17 @@
+name: Hourly Weather - Extended (Days 8-14)
+
+on:
+  schedule:
+    # Runs every 6 hours during tennis playing hours
+    - cron: '0 6,12,18 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-extended-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Extended Forecast (Days 8-14)
+        run: |
+          curl -X POST "https://www.ladderschedule.com/api/cron/weather-hourly?type=extended" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
