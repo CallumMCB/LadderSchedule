@@ -2434,7 +2434,16 @@ function AvailabilityGrid({
           const team2 = teamsData.teams.find(t => t.id === confirmedMatch.team2Id);
           const team1Name = team1 ? `${team1.member1.name || team1.member1.email}${team1.member2 ? ` & ${team1.member2.name || team1.member2.email}` : ''}` : 'Team 1';
           const team2Name = team2 ? `${team2.member1.name || team2.member1.email}${team2.member2 ? ` & ${team2.member2.name || team2.member2.email}` : ''}` : 'Team 2';
-          const matchTime = new Date(confirmedMatch.startAt).toLocaleString();
+          const matchTime = new Date(confirmedMatch.startAt).toLocaleString('en-GB', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/London',
+            timeZoneName: 'short'
+          });
           
           onShowCancelConfirmation({
             matchId: confirmedMatch.id,
