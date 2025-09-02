@@ -3,6 +3,32 @@ import { prisma } from '@/lib/prisma';
 
 const MET_OFFICE_API_KEY = process.env.MET_OFFICE_API_KEY;
 
+function convertToBritishTime(utcDate: Date): Date {
+  // Get the date components in British timezone
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(utcDate);
+  const britishDateTime = new Date(
+    parseInt(parts.find(p => p.type === 'year')!.value),
+    parseInt(parts.find(p => p.type === 'month')!.value) - 1, // Month is 0-indexed
+    parseInt(parts.find(p => p.type === 'day')!.value),
+    parseInt(parts.find(p => p.type === 'hour')!.value),
+    parseInt(parts.find(p => p.type === 'minute')!.value),
+    parseInt(parts.find(p => p.type === 'second')!.value)
+  );
+  
+  return britishDateTime;
+}
+
 function getWeatherDescription(weatherCode: string): string {
   const codes: { [key: string]: string } = {
     '0': 'Clear night',
@@ -131,7 +157,7 @@ export async function POST(request: NextRequest) {
     
     let populatedCount = 0;
     const now = new Date();
-    const britishNow = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+    const britishNow = convertToBritishTime(now);
     const todayStart = new Date(britishNow.getFullYear(), britishNow.getMonth(), britishNow.getDate());
     
     // Step 3: Process hourly data first (most accurate for immediate forecasts)
@@ -139,7 +165,7 @@ export async function POST(request: NextRequest) {
     
     for (const forecast of hourlyTimeSeries) {
       const forecastDateTime = new Date(forecast.time);
-      const britishDateTime = new Date(forecastDateTime.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+      const britishDateTime = convertToBritishTime(forecastDateTime);
       
       // Only tennis playing hours (6am to 10pm)
       const hourOfDay = britishDateTime.getHours();
@@ -185,7 +211,7 @@ export async function POST(request: NextRequest) {
     
     for (const dailyForecast of dailyTimeSeries) {
       const forecastDate = new Date(dailyForecast.time);
-      const britishForecastDate = new Date(forecastDate.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+      const britishForecastDate = convertToBritishTime(forecastDate);
       const dateKey = britishForecastDate.toISOString().split('T')[0];
       
       // Skip if we already have hourly data for this day

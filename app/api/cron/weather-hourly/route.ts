@@ -3,6 +3,32 @@ import { prisma } from '@/lib/prisma';
 
 const MET_OFFICE_API_KEY = process.env.MET_OFFICE_API_KEY;
 
+function convertToBritishTime(utcDate: Date): Date {
+  // Get the date components in British timezone
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(utcDate);
+  const britishDateTime = new Date(
+    parseInt(parts.find(p => p.type === 'year')!.value),
+    parseInt(parts.find(p => p.type === 'month')!.value) - 1, // Month is 0-indexed
+    parseInt(parts.find(p => p.type === 'day')!.value),
+    parseInt(parts.find(p => p.type === 'hour')!.value),
+    parseInt(parts.find(p => p.type === 'minute')!.value),
+    parseInt(parts.find(p => p.type === 'second')!.value)
+  );
+  
+  return britishDateTime;
+}
+
 function getWeatherDescription(weatherCode: string): string {
   const codes: { [key: string]: string } = {
     '0': 'Clear night',
@@ -104,7 +130,7 @@ export async function POST(request: NextRequest) {
     
     // Get current British time
     const now = new Date();
-    const britishNow = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+    const britishNow = convertToBritishTime(now);
     const todayStart = new Date(britishNow.getFullYear(), britishNow.getMonth(), britishNow.getDate());
     
     // Determine which hours to update based on update type
@@ -142,7 +168,7 @@ export async function POST(request: NextRequest) {
     // Process hourly forecasts
     for (const forecast of timeSeries) {
       const forecastDateTime = new Date(forecast.time);
-      const britishDateTime = new Date(forecastDateTime.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+      const britishDateTime = convertToBritishTime(forecastDateTime);
       
       if (!shouldUpdate(britishDateTime)) continue;
       

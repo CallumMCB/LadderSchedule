@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, LinkIcon, CheckCircle2, XCircle } from "lucide-react";
-import { getWeatherEmoji, getWindDirectionEmoji } from "@/lib/weather";
+import { WeatherCell } from "@/components/WeatherCell";
 
 const HALF_HOUR_MINUTES = [0, 30];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -148,12 +148,7 @@ export default function TennisLadderScheduler() {
   const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
   const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
   
-  // Weather data state
-  const [weatherMap, setWeatherMap] = useState<Map<string, {
-    emoji: string;
-    temperature: string;
-    wind: string;
-  }>>(new Map());
+  // Note: Weather display now handled by individual WeatherCell components
   const [showHiddenTeams, setShowHiddenTeams] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
   const [recentActivities, setRecentActivities] = useState<Array<{
@@ -188,6 +183,7 @@ export default function TennisLadderScheduler() {
     myAvail.forEach(k => { if (partnerAvail.has(k)) s.add(k); });
     return s;
   }, [myAvail, partnerAvail]);
+
 
   const { days } = useMemo(() => buildSlotsForWeek(weekStart), [weekStart]);
 
@@ -383,37 +379,7 @@ export default function TennisLadderScheduler() {
     }
   }, [teamsData, teamsData.teams, teamsData.myTeamId, teamsData.currentUserId]);
   
-  // Load weather data for the current week
-  useEffect(() => {
-    const loadWeatherData = async () => {
-      try {
-        const weekEndDate = new Date(weekStart);
-        weekEndDate.setDate(weekEndDate.getDate() + 7);
-        
-        const response = await fetch(`/api/weather/hourly?start=${weekStart.toISOString()}&end=${weekEndDate.toISOString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          const weatherMap = new Map();
-          
-          data.weather?.forEach((w: any) => {
-            const datetime = new Date(w.datetime);
-            const key = datetime.toISOString();
-            weatherMap.set(key, {
-              emoji: getWeatherEmoji(w.weatherType),
-              temperature: `${Math.round(w.temperature)}°`,
-              wind: `${getWindDirectionEmoji(w.windDirection)}${Math.round(w.windSpeed || 0)}`
-            });
-          });
-          
-          setWeatherMap(weatherMap);
-        }
-      } catch (error) {
-        console.error('Failed to load weather data:', error);
-      }
-    };
-    
-    loadWeatherData();
-  }, [weekStart]);
+  // Note: Weather data is now loaded by individual WeatherCell components
   
   // Load unavailable slots from personal API
   const loadPersonalUnavailability = async () => {
@@ -2859,9 +2825,9 @@ function AvailabilityGrid({
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute0);
                     return (
-                      <td key={c} className="p-0 align-top w-32">
+                      <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel0} />
-                        {/* TODO: Add weather display - requires resolving scope issue with weatherMap */}
+                        <WeatherCell slotKey={key} />
                       </td>
                     );
                   })}
@@ -2878,9 +2844,9 @@ function AvailabilityGrid({
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute30);
                     return (
-                      <td key={c} className="p-0 align-top w-32">
+                      <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel30} />
-                        {/* TODO: Add weather display - requires resolving scope issue with weatherMap */}
+                        <WeatherCell slotKey={key} />
                       </td>
                     );
                   })}

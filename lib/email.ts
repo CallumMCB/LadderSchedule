@@ -60,6 +60,32 @@ export function formatTeamName(members: TeamMember[]): string {
   return 'Unknown Team';
 }
 
+function convertToBritishTime(utcDate: Date): Date {
+  // Get the date components in British timezone
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(utcDate);
+  const britishDateTime = new Date(
+    parseInt(parts.find(p => p.type === 'year')!.value),
+    parseInt(parts.find(p => p.type === 'month')!.value) - 1, // Month is 0-indexed
+    parseInt(parts.find(p => p.type === 'day')!.value),
+    parseInt(parts.find(p => p.type === 'hour')!.value),
+    parseInt(parts.find(p => p.type === 'minute')!.value),
+    parseInt(parts.find(p => p.type === 'second')!.value)
+  );
+  
+  return britishDateTime;
+}
+
 export function formatDateTime(date: Date): string {
   return date.toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -74,9 +100,9 @@ export function formatDateTime(date: Date): string {
 
 async function getWeatherForecast(date: Date): Promise<string> {
   try {
-    // Get hourly weather forecast for the match time
-    const britishDate = new Date(date.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
-    const matchHour = new Date(britishDate.getFullYear(), britishDate.getMonth(), britishDate.getDate(), britishDate.getHours(), 0, 0, 0);
+    // Convert UTC date to British time properly
+    const britishTime = convertToBritishTime(date);
+    const matchHour = new Date(britishTime.getFullYear(), britishTime.getMonth(), britishTime.getDate(), britishTime.getHours(), 0, 0, 0);
     
     const cachedWeather = await prisma.hourlyWeatherCache.findUnique({
       where: { datetime: matchHour }
@@ -249,10 +275,16 @@ export async function sendMatchConfirmationEmail(matchDetails: MatchDetails) {
               <h3 style="color: #92400e; margin: 0 0 8px 0; font-size: 16px;">📝 Important Reminders</h3>
               <ul style="margin: 0; padding-left: 20px; color: #78350f;">
                 <li style="margin-bottom: 6px;">Please remember to check the weather beforehand</li>
-                <li style="margin-bottom: 6px;">Let your opponents know if you're running late - a walkover can be taken after 15 minutes no show</li>
+                <li style="margin-bottom: 6px;">
+                  Let your opponents know if you're running late
+                  <div style="font-size: 14px; color: #92400e; margin-top: 2px; margin-left: 10px;">
+                    → A walkover can be taken after 15 minutes no show
+                  </div>
+                </li>
                 <li style="margin-bottom: 6px;">Remember to bring water</li>
               </ul>
             </div>
+
 
             <div style="text-align: center; margin: 24px 0;">
               <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/scoring" 
@@ -292,7 +324,8 @@ ${gearRecommendation}
 
 ` : ''}📝 Important Reminders:
 • Please remember to check the weather beforehand
-• Let your opponents know if you're running late - a walkover can be taken after 15 minutes no show  
+• Let your opponents know if you're running late 
+    a walkover can be taken after 15 minutes no show  
 • Remember to bring water
 
 Good luck with your match! 🏆
@@ -426,7 +459,7 @@ export async function sendMatchCancellationEmail(matchDetails: MatchDetails, can
             
             <p style="margin: 0; color: #6b7280; font-size: 14px; text-align: center;">
               Sorry for the inconvenience! 🎾<br>
-              <span style="color: #9ca3af;">Tennis Ladder Team</span>
+              <span style="color: #9ca3af;">Ladder Schedule Team</span>
             </p>
           </div>
         </div>
