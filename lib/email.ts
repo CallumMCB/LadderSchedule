@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
+import { getWeatherEmoji } from './weather';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -73,35 +74,40 @@ export function formatDateTime(date: Date): string {
 
 async function getWeatherForecast(date: Date): Promise<string> {
   try {
-    // First, try to get weather from cache
-    // Convert to British time and normalize to midnight
+    // Get hourly weather forecast for the match time
     const britishDate = new Date(date.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
-    const matchDate = new Date(britishDate.getFullYear(), britishDate.getMonth(), britishDate.getDate());
+    const matchHour = new Date(britishDate.getFullYear(), britishDate.getMonth(), britishDate.getDate(), britishDate.getHours(), 0, 0, 0);
     
-    const cachedWeather = await prisma.weatherCache.findUnique({
-      where: { date: matchDate }
+    const cachedWeather = await prisma.hourlyWeatherCache.findUnique({
+      where: { datetime: matchHour }
     });
     
     if (cachedWeather) {
-      // Use cached weather data
-      const temp = cachedWeather.temperature;
+      // Use cached hourly weather data
+      const temp = Math.round(cachedWeather.temperature);
+      const feelsLike = cachedWeather.feelsLikeTemperature ? Math.round(cachedWeather.feelsLikeTemperature) : temp;
       const description = cachedWeather.weatherType;
-      const humidity = cachedWeather.humidity;
+      const humidity = cachedWeather.humidity ? Math.round(cachedWeather.humidity) : null;
       const rainChance = cachedWeather.precipitationProbability;
+      const windSpeed = cachedWeather.windSpeed ? Math.round(cachedWeather.windSpeed * 2.237) : null; // Convert m/s to mph
+      const uvIndex = cachedWeather.uvIndex;
       
       let advice = "";
       let gearReminder = "";
       
       // Weather-based advice
-      if (description.toLowerCase().includes("rain") || (rainChance && rainChance > 50)) {
-        advice = " - Check court availability due to rain";
-        gearReminder = "Bring waterproof jacket and towels. Courts may be slippery.";
+      if (description.toLowerCase().includes("rain") || (rainChance && rainChance > 60)) {
+        advice = " - High chance of rain";
+        gearReminder = "⚠️ Bring waterproof jacket, extra towels, and non-slip court shoes. Check court availability before travelling.";
+      } else if (rainChance && rainChance > 30) {
+        advice = " - Possible rain showers";
+        gearReminder = "🌦️ Bring light rain jacket and towels. Monitor weather updates.";
       } else if (description.toLowerCase().includes("snow")) {
         advice = " - Courts may be closed due to snow";
-        gearReminder = "Dress in warm layers, waterproof shoes, and check court availability before travelling.";
+        gearReminder = "❄️ Dress in warm layers, waterproof shoes, and check court availability before travelling.";
       } else if (temp > 28) {
         advice = " - Very hot conditions";
-        gearReminder = "Bring extra water (2+ bottles), electrolyte drinks, sun hat, sunglasses, and SPF 30+ sunscreen. Consider light-colored clothing.";
+        gearReminder = "🌡️ Bring extra water (2+ bottles), electrolyte drinks, sun hat, sunglasses, and SPF 30+ sunscreen. Consider light-colored clothing.";
       } else if (temp > 23) {
         advice = " - Warm conditions";
         gearReminder = "Bring extra water, sun hat, and sunscreen. Light breathable clothing recommended.";
@@ -113,16 +119,20 @@ async function getWeatherForecast(date: Date): Promise<string> {
         gearReminder = "Dress in layers, bring a warm-up jacket, and consider long sleeves/leggings.";
       }
       
-      const tempRange = cachedWeather.minTemperature ? `${cachedWeather.minTemperature}-${temp}°C` : `${temp}°C`;
+      // Enhanced weather display with hourly details
+      const feelsLikeText = feelsLike !== temp ? ` (feels like ${feelsLike}°C)` : '';
       const humidityText = humidity ? `, ${humidity}% humidity` : '';
       const rainText = rainChance ? `, ${rainChance}% chance of rain` : '';
+      const windText = windSpeed ? `, ${windSpeed}mph wind` : '';
+      const uvText = uvIndex && uvIndex > 3 ? `, UV ${uvIndex}` : '';
       
-      const weatherInfo = `${description}, ${tempRange}${humidityText}${rainText}${advice}`;
+      const emoji = getWeatherEmoji(description);
+      const weatherInfo = `${emoji} ${description}, ${temp}°C${feelsLikeText}${humidityText}${rainText}${windText}${uvText}${advice}`;
       return gearReminder ? `${weatherInfo}|GEAR|${gearReminder}` : weatherInfo;
     }
     
     // If no cached data, fall back to seasonal advice
-    console.log(`No cached weather data for ${matchDate.toISOString().split('T')[0]}`);
+    console.log(`No cached hourly weather data for ${matchHour.toISOString()}`);
     const month = date.getMonth() + 1;
     if (month >= 12 || month <= 2) {
       return "Winter conditions expected - dress warmly and check for court availability";

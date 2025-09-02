@@ -42,6 +42,10 @@ function getWeatherDescription(weatherCode: string): string {
 }
 
 async function fetchMetOfficeHourlyWeather() {
+  if (!MET_OFFICE_API_KEY) {
+    throw new Error('Met Office API key not configured');
+  }
+
   const response = await fetch(
     `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly?latitude=52.2928&longitude=-1.5317&includeLocationName=true`,
     {
@@ -61,6 +65,10 @@ async function fetchMetOfficeHourlyWeather() {
 }
 
 async function fetchMetOfficeDailyWeather() {
+  if (!MET_OFFICE_API_KEY) {
+    throw new Error('Met Office API key not configured');
+  }
+
   const response = await fetch(
     `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/daily?latitude=52.2928&longitude=-1.5317&includeLocationName=true`,
     {
