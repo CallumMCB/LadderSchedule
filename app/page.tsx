@@ -135,6 +135,11 @@ export default function TennisLadderScheduler() {
     opponentName: string;
   } | null>(null);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState<{
+    matchId: string;
+    matchInfo: string;
+  } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [actingAsTeam, setActingAsTeam] = useState<string | null>(null);
   const [actingAsPlayer, setActingAsPlayer] = useState<string | null>(null);
   
@@ -1593,6 +1598,7 @@ export default function TennisLadderScheduler() {
         onDoubleClick={handleDoubleClick}
         onCancelMatch={cancelMatch}
         onShowMatchConfirmation={setShowMatchConfirmation}
+        onShowCancelConfirmation={setShowCancelConfirmation}
         actingAsTeam={actingAsTeam}
         actingAsPlayer={actingAsPlayer}
         proxyAvail={proxyAvail}
@@ -1867,6 +1873,64 @@ export default function TennisLadderScheduler() {
                   className="flex-1"
                 >
                   Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="max-w-md w-full mx-4">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Cancel Match?</h3>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  Are you sure you want to cancel this match?
+                </p>
+                <div className="bg-red-50 p-3 rounded border-l-4 border-red-400 mb-4">
+                  <div className="text-sm">
+                    <strong>{showCancelConfirmation.matchInfo}</strong>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason for cancellation (optional):
+                  </label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Let your opponents know why you're cancelling..."
+                    className="w-full p-2 border border-gray-300 rounded-md resize-none"
+                    rows={3}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This message will be included in the cancellation email sent to your opponents.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => {
+                    cancelMatch(showCancelConfirmation.matchId, cancelReason.trim() || undefined);
+                    setShowCancelConfirmation(null);
+                    setCancelReason("");
+                  }} 
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Yes, Cancel Match
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowCancelConfirmation(null);
+                    setCancelReason("");
+                  }} 
+                  className="flex-1"
+                >
+                  Keep Match
                 </Button>
               </div>
             </CardContent>
@@ -2173,12 +2237,12 @@ export default function TennisLadderScheduler() {
     }
   }
 
-  async function cancelMatch(matchId: string) {
+  async function cancelMatch(matchId: string, reason?: string) {
     try {
       const response = await fetch('/api/matches/cancel', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId }),
+        body: JSON.stringify({ matchId, reason }),
       });
 
       if (response.ok) {
@@ -2216,6 +2280,7 @@ function AvailabilityGrid({
   onDoubleClick,
   onCancelMatch,
   onShowMatchConfirmation,
+  onShowCancelConfirmation,
   actingAsTeam,
   actingAsPlayer,
   proxyAvail,
@@ -2259,6 +2324,7 @@ function AvailabilityGrid({
   onDoubleClick: (key: string) => void;
   onCancelMatch: (matchId: string) => void;
   onShowMatchConfirmation: (confirmation: { slot: string; opponent?: { id: string; name: string; color: string }; opponents?: Array<{ id: string; name: string; color: string }>; }) => void;
+  onShowCancelConfirmation: (confirmation: { matchId: string; matchInfo: string }) => void;
   actingAsTeam: string | null;
   actingAsPlayer: string | null;
   proxyAvail: Set<string>;
@@ -2363,10 +2429,17 @@ function AvailabilityGrid({
         const canCancel = myTeamId && (confirmedMatch.team1Id === myTeamId || confirmedMatch.team2Id === myTeamId);
         
         if (canCancel) {
-          const isConfirm = confirm("Are you sure you want to cancel this match?");
-          if (isConfirm) {
-            onCancelMatch(confirmedMatch.id);
-          }
+          // Get team names for the modal
+          const team1 = teamsData.teams.find(t => t.id === confirmedMatch.team1Id);
+          const team2 = teamsData.teams.find(t => t.id === confirmedMatch.team2Id);
+          const team1Name = team1 ? `${team1.member1.name || team1.member1.email}${team1.member2 ? ` & ${team1.member2.name || team1.member2.email}` : ''}` : 'Team 1';
+          const team2Name = team2 ? `${team2.member1.name || team2.member1.email}${team2.member2 ? ` & ${team2.member2.name || team2.member2.email}` : ''}` : 'Team 2';
+          const matchTime = new Date(confirmedMatch.startAt).toLocaleString();
+          
+          onShowCancelConfirmation({
+            matchId: confirmedMatch.id,
+            matchInfo: `${team1Name} vs ${team2Name} on ${matchTime}`
+          });
         }
         return;
       }
