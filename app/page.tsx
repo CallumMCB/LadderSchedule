@@ -2063,7 +2063,7 @@ export default function TennisLadderScheduler() {
       
       {/* Brownian Solutions Branding */}
       <div className="mt-6 text-center text-xs text-muted-foreground border-t pt-4">
-        Made with ❤️ by{' '}
+        Made by{' '}
         <a 
           href="https://brownian.solutions" 
           target="_blank" 

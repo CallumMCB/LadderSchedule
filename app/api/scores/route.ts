@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendScoreReportEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Update scores in database
+    // Update scores in database and send emails
     const updatePromises = scores.map(async (score) => {
       // Verify the match exists and user has permission to update it
       const match = await prisma.match.findUnique({
@@ -68,10 +69,30 @@ export async function POST(req: NextRequest) {
         updateData.team2DetailedScore = score.team2DetailedScore;
       }
       
-      return prisma.match.update({
+      const updatedMatch = await prisma.match.update({
         where: { id: score.matchId },
         data: updateData
       });
+
+      // Send score report email
+      try {
+        await sendScoreReportEmail({
+          matchId: match.id,
+          team1Id: match.team1Id,
+          team2Id: match.team2Id,
+          team1Score: score.team1Score,
+          team2Score: score.team2Score,
+          team1DetailedScore: score.team1DetailedScore,
+          team2DetailedScore: score.team2DetailedScore,
+          startAt: match.startAt,
+          reportedByUserId: currentUser.id
+        });
+      } catch (emailError) {
+        console.error('Failed to send score report email:', emailError);
+        // Don't fail the entire operation if email fails
+      }
+
+      return updatedMatch;
     });
 
     await Promise.all(updatePromises);
