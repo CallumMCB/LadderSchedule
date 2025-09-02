@@ -42,7 +42,43 @@ export async function GET(request: NextRequest) {
 
     const results = [];
     
-    for (const method of testMethods) {
+    // Test the working method and get full structure
+    try {
+      const response = await fetch(
+        `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/daily?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
+        { 
+          headers: {
+            'accept': 'application/json',
+            'apikey': MET_OFFICE_API_KEY
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const fullData = await response.json();
+        results.push({
+          method: 'apikey header (FULL RESPONSE)',
+          status: response.status,
+          statusText: response.statusText,
+          hasFeatures: !!fullData.features,
+          featuresLength: fullData.features?.length,
+          hasProperties: !!fullData.features?.[0]?.properties,
+          propertyKeys: fullData.features?.[0]?.properties ? Object.keys(fullData.features[0].properties) : [],
+          hasTimeSeries: !!fullData.features?.[0]?.properties?.timeSeries,
+          timeSeriesLength: fullData.features?.[0]?.properties?.timeSeries?.length,
+          firstTimeSeriesKeys: fullData.features?.[0]?.properties?.timeSeries?.[0] ? Object.keys(fullData.features[0].properties.timeSeries[0]) : [],
+          sampleTimeSeries: fullData.features?.[0]?.properties?.timeSeries?.slice(0, 2)
+        });
+      }
+    } catch (error) {
+      results.push({
+        method: 'Full debug',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    // Quick test of other methods
+    for (const method of testMethods.slice(1)) {
       try {
         const response = await fetch(
           `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/daily?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,

@@ -121,12 +121,12 @@ export async function POST(request: NextRequest) {
           where: { date: normalizedDate },
           update: {
             temperature: Math.round(forecast.dayMaxScreenTemperature || 20),
-            minTemperature: Math.round(forecast.dayMinScreenTemperature || 10),
-            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || 0),
+            minTemperature: Math.round(forecast.nightMinScreenTemperature || 10),
+            weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
             windSpeed: Math.round(forecast.midday10MWindSpeed || 0),
-            windDirection: forecast.midday10MWindDirection || 'Variable',
-            uvIndex: Math.round(forecast.dayMaxUvIndex || 0),
+            windDirection: forecast.midday10MWindDirection ? `${Math.round(forecast.midday10MWindDirection)}°` : 'Variable',
+            uvIndex: 0, // UV index not available in this API version
             visibility: forecast.middayVisibility ? `${Math.round(forecast.middayVisibility / 1000)}km` : 'Good',
             humidity: Math.round(forecast.middayRelativeHumidity || 50),
             updatedAt: new Date()
@@ -134,12 +134,12 @@ export async function POST(request: NextRequest) {
           create: {
             date: normalizedDate,
             temperature: Math.round(forecast.dayMaxScreenTemperature || 20),
-            minTemperature: Math.round(forecast.dayMinScreenTemperature || 10),
-            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || 0),
+            minTemperature: Math.round(forecast.nightMinScreenTemperature || 10),
+            weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
             windSpeed: Math.round(forecast.midday10MWindSpeed || 0),
-            windDirection: forecast.midday10MWindDirection || 'Variable',
-            uvIndex: Math.round(forecast.dayMaxUvIndex || 0),
+            windDirection: forecast.midday10MWindDirection ? `${Math.round(forecast.midday10MWindDirection)}°` : 'Variable',
+            uvIndex: 0, // UV index not available in this API version
             visibility: forecast.middayVisibility ? `${Math.round(forecast.middayVisibility / 1000)}km` : 'Good',
             humidity: Math.round(forecast.middayRelativeHumidity || 50)
           }
