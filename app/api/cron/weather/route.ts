@@ -3,44 +3,8 @@ import { prisma } from '@/lib/prisma';
 
 const MET_OFFICE_API_KEY = process.env.MET_OFFICE_API_KEY;
 
-interface MetOfficeWeatherData {
-  SiteRep: {
-    DV: {
-      Location: {
-        Period: Array<{
-          value: string; // Date like "2025-01-15Z"
-          Rep: Array<{
-            D: string; // Wind direction
-            F: string; // Feels like temperature
-            G: string; // Wind gust
-            H: string; // Humidity
-            P: string; // Pressure
-            S: string; // Wind speed
-            T: string; // Temperature
-            V: string; // Visibility
-            W: string; // Weather type
-            U: string; // UV index
-            Dm: string; // Max temperature
-            Dn: string; // Min temperature
-            FDm: string; // Feels like max temp
-            FNm: string; // Feels like min temp
-            Gm: string; // Max wind gust
-            Gn: string; // Min wind gust
-            Hm: string; // Max humidity
-            Hn: string; // Min humidity
-            PPd: string; // Precipitation probability day
-            PPn: string; // Precipitation probability night
-            Sm: string; // Max wind speed
-            Sn: string; // Min wind speed
-            Um: string; // Max UV
-            Un: string; // Min UV
-            Vm: string; // Max visibility
-            Vn: string; // Min visibility
-          }>;
-        }>;
-      };
-    };
-  };
+function toGB(utc: Date) {
+  return new Date(utc.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
 }
 
 function getWeatherDescription(weatherCode: string): string {
@@ -77,209 +41,185 @@ function getWeatherDescription(weatherCode: string): string {
     '29': 'Light snow and thunder',
     '30': 'Thunderstorm'
   };
-  
   return codes[weatherCode] || 'Variable conditions';
 }
 
-async function fetchMetOfficeWeather() {
-  if (!MET_OFFICE_API_KEY) {
-    throw new Error('Met Office API key not configured');
+// Shared coords
+const latitude = 52.2928;
+const longitude = -1.5317;
+
+async function fetchJSON(url: string) {
+  if (!MET_OFFICE_API_KEY) throw new Error('Met Office API key not configured');
+  const res = await fetch(url, {
+    headers: { accept: 'application/json', apikey: MET_OFFICE_API_KEY }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
-
-  // Leamington Spa coordinates
-  const latitude = 52.2928;
-  const longitude = -1.5317;
-
-  const response = await fetch(
-    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/daily?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
-    {
-      headers: {
-        'accept': 'application/json',
-        'apikey': MET_OFFICE_API_KEY
-      }
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Met Office API error response:', errorText);
-    throw new Error(`Met Office API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
+  return res.json();
 }
 
+async function fetchHourly() {
+  return fetchJSON(
+    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`
+  );
+}
+
+async function fetchThreeHourly() {
+  return fetchJSON(
+    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/three-hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`
+  );
+}
+
+/**
+ * HYBRID updater:
+ * - Writes hourly data for 0–48 hours (06:00–22:00)
+ * - Writes 3-hourly data for >48h to 7 days (06:00–21:00, on 3-hour steps)
+ * - Cleans old data (older than 06:00 two days ago)
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Verify this is an authorized cron job
-    // Vercel cron jobs include a special header
+    // Authorization
     const authHeader = request.headers.get('authorization');
     const vercelCronHeader = request.headers.get('vercel-cron');
     const expectedToken = process.env.CRON_SECRET || 'development-secret';
-    
-    // Allow both Vercel cron jobs and manual calls with auth header
     const isAuthorized = vercelCronHeader === '1' || authHeader === `Bearer ${expectedToken}`;
-    
     if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🌤️ Starting weather cache update...');
-    
-    // Fetch weather data from Met Office
-    const weatherData = await fetchMetOfficeWeather();
-    
-    console.log('Daily Weather API - Raw response:', JSON.stringify(weatherData, null, 2));
-    
-    console.log('Weather data structure:', JSON.stringify({
-      hasFeatures: !!weatherData.features,
-      featuresLength: weatherData.features?.length,
-      hasProperties: !!weatherData.features?.[0]?.properties,
-      propertyKeys: weatherData.features?.[0]?.properties ? Object.keys(weatherData.features[0].properties) : [],
-      hasTimeSeries: !!weatherData.features?.[0]?.properties?.timeSeries
-    }, null, 2));
-    
-    if (!weatherData?.features?.[0]?.properties?.timeSeries) {
-      throw new Error(`Invalid weather data format. Structure: ${JSON.stringify(weatherData?.features?.[0]?.properties ? Object.keys(weatherData.features[0].properties) : 'No properties')}`);
-    }
+    console.log('🌤️ Starting HYBRID weather cache update (hourly 0–48h, three-hourly 48h–7d)...');
 
-    const timeSeries = weatherData.features[0].properties.timeSeries;
-    let updatedCount = 0;
-    
-    // Process each day's forecast (keep next 14 days)
+    const [hourly, threeHourly] = await Promise.all([fetchHourly(), fetchThreeHourly()]);
+    const hourlyTS = hourly?.features?.[0]?.properties?.timeSeries || [];
+    const threeTS = threeHourly?.features?.[0]?.properties?.timeSeries || [];
+
     const now = new Date();
-    const britishNow = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
-    const maxDate = new Date(britishNow);
-    maxDate.setDate(maxDate.getDate() + 14);
-    
-    for (const forecast of timeSeries) {
-      const forecastDate = new Date(forecast.time);
-      const britishForecastDate = new Date(forecastDate.toLocaleString('en-GB', { timeZone: 'Europe/London' }));
-      
-      // Only process forecasts within the next 14 days
-      if (britishForecastDate > maxDate) continue;
-      
-      // Normalize to midnight British time for consistent date matching
-      const normalizedDate = new Date(britishForecastDate.getFullYear(), britishForecastDate.getMonth(), britishForecastDate.getDate());
-      
-      try {
-        // Create daily weather entries in hourly table for better compatibility
-        // Create representative hourly entries for morning (9am) and afternoon (3pm) 
-        const morningTime = new Date(normalizedDate);
-        morningTime.setHours(9, 0, 0, 0);
-        
-        const afternoonTime = new Date(normalizedDate);
-        afternoonTime.setHours(15, 0, 0, 0);
-        
-        // Morning entry (cooler, using min temp)
-        await prisma.hourlyWeatherCache.upsert({
-          where: { datetime: morningTime },
-          update: {
-            temperature: forecast.nightMinScreenTemperature || 10,
-            feelsLikeTemperature: forecast.nightMinScreenTemperature || 10,
-            weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
-            precipitationRate: 0,
-            windSpeed: forecast.midday10MWindSpeed || 0,
-            windDirection: Math.round(forecast.midday10MWindDirection || 0),
-            windGust: forecast.midday10MWindSpeed || 0,
-            uvIndex: Math.round((forecast.maxUvIndex || 0) * 0.6), // Lower UV in morning
-            visibility: Math.round(forecast.middayVisibility || 10000),
-            humidity: forecast.middayRelativeHumidity || 50,
-            pressure: 101325, // Standard pressure
-            dewPoint: (forecast.nightMinScreenTemperature || 10) - 5,
-            updatedAt: new Date()
-          },
-          create: {
-            datetime: morningTime,
-            temperature: forecast.nightMinScreenTemperature || 10,
-            feelsLikeTemperature: forecast.nightMinScreenTemperature || 10,
-            weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
-            precipitationRate: 0,
-            windSpeed: forecast.midday10MWindSpeed || 0,
-            windDirection: Math.round(forecast.midday10MWindDirection || 0),
-            windGust: forecast.midday10MWindSpeed || 0,
-            uvIndex: Math.round((forecast.maxUvIndex || 0) * 0.6),
-            visibility: Math.round(forecast.middayVisibility || 10000),
-            humidity: forecast.middayRelativeHumidity || 50,
-            pressure: 101325,
-            dewPoint: (forecast.nightMinScreenTemperature || 10) - 5
-          }
-        });
+    const gbNow = toGB(now);
+    const horizon48 = new Date(gbNow.getTime() + 48 * 60 * 60 * 1000);
+    const horizon7d = new Date(gbNow.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-        // Afternoon entry (warmer, using max temp)
+    let updatedHourly = 0;
+    let updatedThree = 0;
+
+    // Process 0–48h (hourly)
+    for (const f of hourlyTS) {
+      const gb = toGB(new Date(f.time));
+      if (gb < gbNow || gb > horizon48) continue;
+      const h = gb.getHours();
+      if (h < 6 || h > 22) continue;
+
+      try {
         await prisma.hourlyWeatherCache.upsert({
-          where: { datetime: afternoonTime },
+          where: { datetime: gb },
           update: {
-            temperature: forecast.dayMaxScreenTemperature || 20,
-            feelsLikeTemperature: forecast.dayMaxScreenTemperature || 20,
-            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || forecast.nightSignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || forecast.nightProbabilityOfPrecipitation || 0),
-            precipitationRate: 0,
-            windSpeed: forecast.midday10MWindSpeed || 0,
-            windDirection: Math.round(forecast.midday10MWindDirection || 0),
-            windGust: forecast.midday10MWindSpeed || 0,
-            uvIndex: Math.round(forecast.maxUvIndex || 0),
-            visibility: Math.round(forecast.middayVisibility || 10000),
-            humidity: forecast.middayRelativeHumidity || 50,
-            pressure: 101325,
-            dewPoint: (forecast.dayMaxScreenTemperature || 20) - 10,
+            temperature: f.screenTemperature,
+            feelsLikeTemperature: f.feelsLikeTemperature,
+            weatherType: getWeatherDescription(f.significantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(f.probOfPrecipitation || 0),
+            precipitationRate: f.precipitationRate || 0,
+            windSpeed: f.windSpeed10m,
+            windDirection: Math.round(f.windDirectionFrom10m || 0),
+            windGust: f.windGustSpeed10m,
+            uvIndex: Math.round(f.uvIndex || 0),
+            visibility: Math.round(f.visibility || 0),
+            humidity: f.screenRelativeHumidity,
+            pressure: f.mslp,
+            dewPoint: f.screenDewPointTemperature,
             updatedAt: new Date()
           },
           create: {
-            datetime: afternoonTime,
-            temperature: forecast.dayMaxScreenTemperature || 20,
-            feelsLikeTemperature: forecast.dayMaxScreenTemperature || 20,
-            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || forecast.nightSignificantWeatherCode?.toString() || '1'),
-            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || forecast.nightProbabilityOfPrecipitation || 0),
-            precipitationRate: 0,
-            windSpeed: forecast.midday10MWindSpeed || 0,
-            windDirection: Math.round(forecast.midday10MWindDirection || 0),
-            windGust: forecast.midday10MWindSpeed || 0,
-            uvIndex: Math.round(forecast.maxUvIndex || 0),
-            visibility: Math.round(forecast.middayVisibility || 10000),
-            humidity: forecast.middayRelativeHumidity || 50,
-            pressure: 101325,
-            dewPoint: (forecast.dayMaxScreenTemperature || 20) - 10
+            datetime: gb,
+            temperature: f.screenTemperature,
+            feelsLikeTemperature: f.feelsLikeTemperature,
+            weatherType: getWeatherDescription(f.significantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(f.probOfPrecipitation || 0),
+            precipitationRate: f.precipitationRate || 0,
+            windSpeed: f.windSpeed10m,
+            windDirection: Math.round(f.windDirectionFrom10m || 0),
+            windGust: f.windGustSpeed10m,
+            uvIndex: Math.round(f.uvIndex || 0),
+            visibility: Math.round(f.visibility || 0),
+            humidity: f.screenRelativeHumidity,
+            pressure: f.mslp,
+            dewPoint: f.screenDewPointTemperature
           }
         });
-        
-        updatedCount += 2; // We create 2 hourly entries per day
-      } catch (error) {
-        console.error(`Failed to update weather for ${normalizedDate.toISOString().split('T')[0]}:`, error);
+        updatedHourly++;
+      } catch (e) {
+        console.error(`Upsert hourly failed for ${gb.toISOString()}`, e);
       }
     }
 
-    // Clean up old weather data (older than 1 day) - using British time
-    const cutoffDate = new Date(britishNow);
-    cutoffDate.setDate(cutoffDate.getDate() - 1);
-    cutoffDate.setHours(6, 0, 0, 0); // 6am cutoff
-    
-    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
-      where: {
-        datetime: {
-          lt: cutoffDate
-        }
+    // Process >48h–7d (3-hourly)
+    for (const f of threeTS) {
+      const gb = toGB(new Date(f.time));
+      if (gb <= horizon48 || gb > horizon7d) continue;
+      const h = gb.getHours();
+      if (h < 6 || h > 21) continue;
+      if (h % 3 !== 0) continue;
+
+      try {
+        await prisma.hourlyWeatherCache.upsert({
+          where: { datetime: gb },
+          update: {
+            temperature: f.screenTemperature,
+            feelsLikeTemperature: f.feelsLikeTemperature,
+            weatherType: getWeatherDescription(f.significantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(f.probOfPrecipitation || 0),
+            precipitationRate: f.precipitationRate || 0,
+            windSpeed: f.windSpeed10m,
+            windDirection: Math.round(f.windDirectionFrom10m || 0),
+            windGust: f.windGustSpeed10m,
+            uvIndex: Math.round(f.uvIndex || 0),
+            visibility: Math.round(f.visibility || 0),
+            humidity: f.screenRelativeHumidity,
+            pressure: f.mslp,
+            dewPoint: f.screenDewPointTemperature,
+            updatedAt: new Date()
+          },
+          create: {
+            datetime: gb,
+            temperature: f.screenTemperature,
+            feelsLikeTemperature: f.feelsLikeTemperature,
+            weatherType: getWeatherDescription(f.significantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(f.probOfPrecipitation || 0),
+            precipitationRate: f.precipitationRate || 0,
+            windSpeed: f.windSpeed10m,
+            windDirection: Math.round(f.windDirectionFrom10m || 0),
+            windGust: f.windGustSpeed10m,
+            uvIndex: Math.round(f.uvIndex || 0),
+            visibility: Math.round(f.visibility || 0),
+            humidity: f.screenRelativeHumidity,
+            pressure: f.mslp,
+            dewPoint: f.screenDewPointTemperature
+          }
+        });
+        updatedThree++;
+      } catch (e) {
+        console.error(`Upsert three-hourly failed for ${gb.toISOString()}`, e);
       }
+    }
+
+    // Cleanup: older than 06:00 two days ago
+    const cutoff = new Date(gbNow.getFullYear(), gbNow.getMonth(), gbNow.getDate() - 2, 6, 0, 0, 0);
+    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
+      where: { datetime: { lt: cutoff } }
     });
 
-    console.log(`✅ Weather cache updated: ${updatedCount} forecasts, ${deletedCount.count} old records cleaned`);
-    
+    console.log(`✅ HYBRID update done. Hourly: ${updatedHourly} | 3-hourly: ${updatedThree} | Cleaned: ${deletedCount.count}`);
     return NextResponse.json({
       success: true,
-      message: `Updated ${updatedCount} weather forecasts, cleaned ${deletedCount.count} old records`,
-      updatedCount,
+      message: `Hybrid update complete: hourly ${updatedHourly}, three-hourly ${updatedThree}, cleaned ${deletedCount.count}`,
+      updatedHourly,
+      updatedThree,
       deletedCount: deletedCount.count
     });
-
   } catch (error) {
-    console.error('❌ Weather cache update failed:', error);
+    console.error('❌ HYBRID weather cache update failed:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to update weather cache',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Failed to update hybrid weather cache', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -287,6 +227,5 @@ export async function POST(request: NextRequest) {
 
 // Allow GET requests for manual testing
 export async function GET(request: NextRequest) {
-  // Just call the POST method for testing
   return POST(request);
 }

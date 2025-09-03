@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(start);
     const endDate = new Date(end);
     
-    // Get weather data (now includes both hourly and three-hourly in one table)
     const weather = await prisma.hourlyWeatherCache.findMany({
       where: {
         datetime: {
@@ -24,14 +23,14 @@ export async function GET(request: NextRequest) {
           lt: endDate
         }
       },
-      orderBy: {
-        datetime: 'asc'
-      }
+      orderBy: { datetime: 'asc' }
     });
-    
-    return NextResponse.json({
-      success: true,
-      weather: weather.map(w => ({
+
+    // Optional cadence hint (1h vs 3h) from timestamp hour modulo 3
+    const payload = weather.map(w => {
+      const hour = w.datetime.getHours();
+      const cadence = hour % 3 === 0 ? '3h' : '1h';
+      return {
         datetime: w.datetime.toISOString(),
         temperature: w.temperature,
         feelsLikeTemperature: w.feelsLikeTemperature,
@@ -46,9 +45,12 @@ export async function GET(request: NextRequest) {
         humidity: w.humidity,
         pressure: w.pressure,
         dewPoint: w.dewPoint,
+        cadence,
         source: 'hybrid'
-      }))
+      };
     });
+    
+    return NextResponse.json({ success: true, weather: payload });
     
   } catch (error) {
     console.error('Failed to fetch hourly weather:', error);

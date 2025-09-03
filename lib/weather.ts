@@ -35,14 +35,14 @@ export function getWeatherEmoji(weatherType: string): string {
   if (weather.includes('snow')) return '❄️';
   if (weather.includes('sleet') || weather.includes('hail')) return '🌨️';
   
-  return '🌤️'; // Default partly sunny
+  return '🌤️';
 }
 
 /**
  * Get wind direction emoji based on degrees
  */
 export function getWindDirectionEmoji(degrees?: number | null): string {
-  if (!degrees) return '💨';
+  if (degrees === null || degrees === undefined) return '💨';
   
   if (degrees >= 337.5 || degrees < 22.5) return '⬆️'; // N
   if (degrees >= 22.5 && degrees < 67.5) return '↗️'; // NE
@@ -107,12 +107,10 @@ export async function getMatchWeatherForecast(startTime: Date, endTime: Date): P
     const maxPrecip = Math.max(...weather.map(w => w.precipitationProbability || 0));
     const avgWindSpeed = Math.round(weather.reduce((sum, w) => sum + (w.windSpeed || 0), 0) / weather.length);
     
-    // Generate summary
-    const mainWeather = weather[0]; // Use first hour as primary weather
+    const mainWeather = weather[0];
     const emoji = getWeatherEmoji(mainWeather.weatherType);
     const summary = `${emoji} ${mainWeather.weatherType}, ${avgTemp}°C`;
     
-    // Generate recommendation
     let recommendation = '';
     if (maxPrecip > 70) {
       recommendation = '⚠️ High chance of rain - consider rescheduling or indoor courts';
@@ -128,11 +126,7 @@ export async function getMatchWeatherForecast(startTime: Date, endTime: Date): P
       recommendation = '✅ Good conditions for tennis';
     }
     
-    return {
-      summary,
-      details: weather,
-      recommendation
-    };
+    return { summary, details: weather, recommendation };
     
   } catch (error) {
     console.error('Failed to get match weather forecast:', error);
