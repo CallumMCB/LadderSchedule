@@ -129,6 +129,8 @@ export async function POST(request: NextRequest) {
     // Fetch weather data from Met Office
     const weatherData = await fetchMetOfficeWeather();
     
+    console.log('Daily Weather API - Raw response:', JSON.stringify(weatherData, null, 2));
+    
     console.log('Weather data structure:', JSON.stringify({
       hasFeatures: !!weatherData.features,
       featuresLength: weatherData.features?.length,

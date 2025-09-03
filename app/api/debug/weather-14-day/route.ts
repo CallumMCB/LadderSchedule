@@ -95,7 +95,12 @@ export async function POST(request: NextRequest) {
       dailyResult = await dailyResponse.json();
       console.log('✅ Daily weather API succeeded:', dailyResult.message);
     } else {
-      console.log('⚠️ Daily weather API failed, continuing with hourly only');
+      const errorText = await dailyResponse.text();
+      console.log('⚠️ Daily weather API failed:', dailyResponse.status, dailyResponse.statusText, errorText);
+      dailyResult = { 
+        error: `Daily API failed: ${dailyResponse.status} ${dailyResponse.statusText}`, 
+        details: errorText 
+      };
     }
     
     // Then call the weather-hourly endpoint with type=all for detailed hourly data
