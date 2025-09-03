@@ -2938,20 +2938,21 @@ function AvailabilityGrid({
     );
   }
   return (
-    <div className="overflow-auto rounded-2xl shadow">
-      <table className="w-full border-collapse">
-        <thead className="sticky top-0 z-10">
-          <tr>
-            <th className="bg-white border p-2 text-left sticky top-0">Time</th>
-            {days.map((d, i) => {
-              const dayOfWeek = d.getDay();
-              const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
-              return (
-                <th key={i} className="bg-white border p-2 text-left min-w-[120px] sticky top-0">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
-              );
-            })}
-          </tr>
-        </thead>
+    <div className="rounded-2xl shadow overflow-hidden">
+      <div className="max-h-[80vh] overflow-auto">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 z-20 bg-white">
+            <tr>
+              <th className="bg-white border p-2 text-left shadow-sm">Time</th>
+              {days.map((d, i) => {
+                const dayOfWeek = d.getDay();
+                const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
+                return (
+                  <th key={i} className="bg-white border p-2 text-left min-w-[120px] shadow-sm">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
+                );
+              })}
+            </tr>
+          </thead>
         <tbody>
           {(() => {
             // Define time ranges
@@ -3014,6 +3015,7 @@ function AvailabilityGrid({
           })()}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
