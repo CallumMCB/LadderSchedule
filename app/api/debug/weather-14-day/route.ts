@@ -141,7 +141,11 @@ export async function POST(request: NextRequest) {
     } else {
       const errorText = await threeHourlyResponse.text();
       console.log('⚠️ Three-hourly weather API failed:', errorText);
-      threeHourlyResult = { error: `Three-hourly API failed: ${threeHourlyResponse.status}` };
+      threeHourlyResult = { 
+        error: `Three-hourly API failed: ${threeHourlyResponse.status}`,
+        details: errorText,
+        status: threeHourlyResponse.status
+      };
     }
     
     // Check the combined results
