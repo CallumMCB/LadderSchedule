@@ -1585,20 +1585,6 @@ export default function TennisLadderScheduler() {
             </Button>
           </div>
         </div>
-        
-        <div className="flex flex-row items-center gap-3 text-sm">
-          <span className="text-gray-600 whitespace-nowrap">Display:</span>
-          <div className="flex gap-2">
-            <Button
-              variant={showWeather ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowWeather(!showWeather)}
-              className="text-xs"
-            >
-              {showWeather ? "Hide" : "Show"} weather
-            </Button>
-          </div>
-        </div>
       </div>
 
       <AvailabilityGrid 
@@ -1952,101 +1938,69 @@ export default function TennisLadderScheduler() {
         </div>
       )}
 
-      {/* Bottom Left Action Buttons */}
+      {/* Bottom Left Settings Menu */}
       <div className="fixed bottom-4 left-2 sm:bottom-6 sm:left-6 z-40">
         <div className="flex flex-col items-start gap-1 sm:gap-2">
-          {/* Desktop: Show all buttons */}
-          <div className="hidden sm:flex flex-col items-start gap-2">
-            <Button 
-              onClick={loadAllData} 
-              variant="outline"
-              size="sm"
-              className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
-            >
-              🔄 <span className="hidden sm:inline">Refresh Data</span>
-            </Button>
-            <Button 
-              onClick={() => setShowClearConfirmation(true)}
-              variant="outline"
-              size="sm"
-              className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
-            >
-              🗑️ <span className="hidden sm:inline">Clear All Unconfirmed</span>
-            </Button>
-            <Button 
-              onClick={performUndo}
-              variant="outline" 
-              size="sm"
-              disabled={undoStack.length === 0}
-              className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
-            >
-              ↶ <span className="hidden sm:inline">Undo ({undoStack.length})</span><span className="sm:hidden">({undoStack.length})</span>
-            </Button>
-            <Button 
-              onClick={() => setShowHiddenTeams(!showHiddenTeams)}
-              variant={showHiddenTeams ? "default" : "outline"}
-              size="sm"
-              className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
-            >
-              👁️ <span className="hidden sm:inline">{showHiddenTeams ? "Hide" : "Show"} Matched Teams</span>
-            </Button>
-          </div>
-
-          {/* Mobile: Collapsible action menu */}
-          <div className="sm:hidden flex flex-col items-start gap-1">
-            {/* Expanded buttons */}
-            {showMobileActions && (
-              <div className="flex flex-col items-start gap-1 mb-1">
-                <Button 
-                  onClick={loadAllData} 
-                  variant="outline"
-                  size="sm"
-                  className="shadow-lg hover:shadow-xl transition-shadow text-xs"
-                >
-                  🔄
-                </Button>
-                <Button 
-                  onClick={() => setShowClearConfirmation(true)}
-                  variant="outline"
-                  size="sm"
-                  className="shadow-lg hover:shadow-xl transition-shadow text-xs"
-                >
-                  🗑️
-                </Button>
-                <Button 
-                  onClick={performUndo}
-                  variant="outline" 
-                  size="sm"
-                  disabled={undoStack.length === 0}
-                  className="shadow-lg hover:shadow-xl transition-shadow text-xs"
-                >
-                  ↶ ({undoStack.length})
-                </Button>
-                <Button 
-                  onClick={() => setShowHiddenTeams(!showHiddenTeams)}
-                  variant={showHiddenTeams ? "default" : "outline"}
-                  size="sm"
-                  className="shadow-lg hover:shadow-xl transition-shadow text-xs"
-                >
-                  👁️
-                </Button>
-              </div>
-            )}
-            
-            {/* Main action button */}
-            <Button 
-              onClick={() => setShowMobileActions(!showMobileActions)}
-              variant="outline"
-              size="sm"
-              className="shadow-lg hover:shadow-xl transition-shadow text-xs"
-            >
-              {showMobileActions ? '✕' : '⚙️'}
-            </Button>
-          </div>
+          {/* Expanded settings */}
+          {showMobileActions && (
+            <div className="flex flex-col items-start gap-1 mb-1">
+              <Button 
+                onClick={loadAllData} 
+                variant="outline"
+                size="sm"
+                className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+              >
+                🔄 <span className="hidden sm:inline">Refresh Data</span>
+              </Button>
+              <Button 
+                onClick={() => setShowClearConfirmation(true)}
+                variant="outline"
+                size="sm"
+                className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+              >
+                🗑️ <span className="hidden sm:inline">Clear All Unconfirmed</span>
+              </Button>
+              <Button 
+                onClick={performUndo}
+                variant="outline" 
+                size="sm"
+                disabled={undoStack.length === 0}
+                className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+              >
+                ↶ <span className="hidden sm:inline">Undo ({undoStack.length})</span><span className="sm:hidden">({undoStack.length})</span>
+              </Button>
+              <Button 
+                onClick={() => setShowHiddenTeams(!showHiddenTeams)}
+                variant={showHiddenTeams ? "default" : "outline"}
+                size="sm"
+                className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+              >
+                👁️ <span className="hidden sm:inline">{showHiddenTeams ? "Hide" : "Show"} Matched Teams</span>
+              </Button>
+              <Button
+                variant={showWeather ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowWeather(!showWeather)}
+                className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+              >
+                🌤️ <span className="hidden sm:inline">{showWeather ? "Hide" : "Show"} Weather</span>
+              </Button>
+            </div>
+          )}
+          
+          {/* Settings toggle button */}
+          <Button 
+            onClick={() => setShowMobileActions(!showMobileActions)}
+            variant="outline"
+            size="sm"
+            className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
+          >
+            {showMobileActions ? '✕' : '⚙️'} <span className="hidden sm:inline">{showMobileActions ? 'Close' : 'Settings'}</span>
+          </Button>
         </div>
       </div>
 
-      {/* Sticky Save Button */}
+      {/* Bottom Right Action Buttons */}
       <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-50">
         <div className="flex flex-col items-end gap-1 sm:gap-2">
           {saveMsg && (
@@ -2067,15 +2021,18 @@ export default function TennisLadderScheduler() {
             <span className="sm:hidden">{isBlockSelectMode ? "Exit Block" : "Block"}</span>
             <span className="hidden sm:inline">{isBlockSelectMode ? "Exit Block Select" : "Block Select"}</span>
           </Button>
-          <Button 
-            onClick={saveAvailability} 
-            disabled={saving || !!isAfterEndDate}
-            className="shadow-lg hover:shadow-xl transition-shadow text-sm sm:text-base"
-            size="lg"
-          >
-            <span className="sm:hidden">{saving ? "Saving…" : isAfterEndDate ? "Ended" : "Save"}</span>
-            <span className="hidden sm:inline">{saving ? "Saving…" : isAfterEndDate ? "Ladder Ended" : "Save Changes"}</span>
-          </Button>
+          {/* Save button - only show when there are changes */}
+          {(myAvail.size > 0 || myUnavail.size > 0 || partnerAvail.size > 0 || proxyModifiedSlots.size > 0) && (
+            <Button 
+              onClick={saveAvailability} 
+              disabled={saving || !!isAfterEndDate}
+              className="shadow-lg hover:shadow-xl transition-shadow text-sm sm:text-base"
+              size="lg"
+            >
+              <span className="sm:hidden">{saving ? "Saving…" : isAfterEndDate ? "Ended" : "Save"}</span>
+              <span className="hidden sm:inline">{saving ? "Saving…" : isAfterEndDate ? "Ladder Ended" : "Save Changes"}</span>
+            </Button>
+          )}
         </div>
       </div>
 
