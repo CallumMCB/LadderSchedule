@@ -77,7 +77,7 @@ async function fetchMetOfficeThreeHourlyWeather() {
   const longitude = -1.5317;
 
   const response = await fetch(
-    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/3hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
+    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/three-hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
     {
       headers: {
         'accept': 'application/json',
