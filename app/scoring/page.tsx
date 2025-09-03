@@ -169,6 +169,19 @@ export default function ScoringPage() {
     return `${initial1} & ${initial2}`;
   }
 
+  function getTeamColumnName(team: Team): string {
+    const name1 = team.member1.name || team.member1.email.split('@')[0];
+    const firstName1 = name1.split(' ')[0]; // Get first name only
+    
+    if (!team.member2 || team.member2.id === team.member1.id) {
+      return `${firstName1} (solo)`;
+    }
+    
+    const name2 = team.member2.name || team.member2.email.split('@')[0];
+    const firstName2 = name2.split(' ')[0]; // Get first name only
+    return `${firstName1} & ${firstName2}`;
+  }
+
   function getMatchBetweenTeams(team1Id: string, team2Id: string): Match | undefined {
     return teamsData.matches.find(match => 
       (match.team1Id === team1Id && match.team2Id === team2Id) ||
@@ -814,9 +827,9 @@ export default function ScoringPage() {
 
   if (!session) {
     return (
-      <div className="max-w-2xl mx-auto p-4">
-        <Card>
-          <CardContent className="p-6 text-center">
+      <div className="w-full sm:max-w-2xl sm:mx-auto p-4">
+        <div className="border-0 sm:border sm:border-gray-200 rounded-none sm:rounded-lg p-6 sm:bg-white bg-transparent sm:shadow-sm text-center">
+          <div className="">
             <h2 className="text-xl font-semibold mb-4">Please log in</h2>
             <p className="text-muted-foreground mb-4">You need to be logged in to access scoring.</p>
             <div className="space-y-2">
@@ -830,8 +843,8 @@ export default function ScoringPage() {
                 </a>
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -839,9 +852,9 @@ export default function ScoringPage() {
   const teams = teamsData.teams || [];
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      <Card>
-        <CardContent className="p-6">
+    <div className="w-full sm:max-w-6xl sm:mx-auto p-0 sm:p-4 space-y-0 sm:space-y-6">
+      <div className="border-0 sm:border sm:border-gray-200 rounded-none sm:rounded-lg p-4 sm:p-6 sm:bg-white bg-transparent sm:shadow-sm">
+        <div className="">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-semibold">Match Scoring</h1>
@@ -884,7 +897,7 @@ export default function ScoringPage() {
           ) : (
             <>
               {/* Scoring Grid */}
-              <div className="overflow-auto rounded-lg border">
+              <div className="overflow-auto rounded-none sm:rounded-lg border-0 sm:border">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
@@ -895,10 +908,17 @@ export default function ScoringPage() {
                             className="text-xs px-2 py-1 rounded text-white"
                             style={{ backgroundColor: team.color }}
                           >
-                            {getTeamDisplayName(team).length > 15 
-                              ? getTeamDisplayName(team).substring(0, 15) + '...'
-                              : getTeamDisplayName(team)
-                            }
+                            {/* Desktop: Show first names */}
+                            <span className="hidden md:inline">
+                              {getTeamColumnName(team).length > 15 
+                                ? getTeamColumnName(team).substring(0, 15) + '...'
+                                : getTeamColumnName(team)
+                              }
+                            </span>
+                            {/* Mobile: Show initials */}
+                            <span className="md:hidden">
+                              {getTeamInitials(team)}
+                            </span>
                           </div>
                         </th>
                       ))}
@@ -1501,8 +1521,8 @@ export default function ScoringPage() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Fixed Refresh Button */}
       <div className="fixed bottom-6 right-6 z-40">
