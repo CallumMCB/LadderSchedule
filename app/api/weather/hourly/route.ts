@@ -16,39 +16,18 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(start);
     const endDate = new Date(end);
     
-    // Get both hourly and three-hourly data for comprehensive coverage
-    const [hourlyWeather, threeHourlyWeather] = await Promise.all([
-      prisma.hourlyWeatherCache.findMany({
-        where: {
-          datetime: {
-            gte: startDate,
-            lt: endDate
-          }
-        },
-        orderBy: {
-          datetime: 'asc'
+    // Get weather data (now includes both hourly and three-hourly in one table)
+    const weather = await prisma.hourlyWeatherCache.findMany({
+      where: {
+        datetime: {
+          gte: startDate,
+          lt: endDate
         }
-      }),
-      prisma.threeHourlyWeatherCache.findMany({
-        where: {
-          datetime: {
-            gte: startDate,
-            lt: endDate
-          }
-        },
-        orderBy: {
-          datetime: 'asc'
-        }
-      })
-    ]);
-    
-    // Combine and sort both datasets
-    const allWeatherData = [
-      ...hourlyWeather.map(w => ({ ...w, source: 'hourly' })),
-      ...threeHourlyWeather.map(w => ({ ...w, source: 'three-hourly' }))
-    ].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
-    
-    const weather = allWeatherData;
+      },
+      orderBy: {
+        datetime: 'asc'
+      }
+    });
     
     return NextResponse.json({
       success: true,
@@ -67,7 +46,7 @@ export async function GET(request: NextRequest) {
         humidity: w.humidity,
         pressure: w.pressure,
         dewPoint: w.dewPoint,
-        source: w.source
+        source: 'hybrid'
       }))
     });
     

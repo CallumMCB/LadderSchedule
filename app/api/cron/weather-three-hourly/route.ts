@@ -155,8 +155,8 @@ export async function POST(request: NextRequest) {
       }
       
       try {
-        // Upsert three-hourly weather cache entry
-        await prisma.threeHourlyWeatherCache.upsert({
+        // Upsert three-hourly weather cache entry into hourly table (for now)
+        await prisma.hourlyWeatherCache.upsert({
           where: { datetime: britishDateTime },
           update: {
             temperature: forecast.screenTemperature,
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
     cleanupCutoff.setDate(cleanupCutoff.getDate() - 2);
     cleanupCutoff.setHours(6, 0, 0, 0);
     
-    const deletedCount = await prisma.threeHourlyWeatherCache.deleteMany({
+    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
       where: {
         datetime: {
           lt: cleanupCutoff

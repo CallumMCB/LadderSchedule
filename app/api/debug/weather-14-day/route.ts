@@ -7,37 +7,17 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // Get all weather data from today onwards (both hourly and three-hourly)
-    const [hourlyWeatherData, threeHourlyWeatherData] = await Promise.all([
-      prisma.hourlyWeatherCache.findMany({
-        where: {
-          datetime: {
-            gte: todayStart
-          }
-        },
-        orderBy: {
-          datetime: 'asc'
+    // Get all weather data from today onwards (combined hourly + three-hourly in one table)
+    const weatherData = await prisma.hourlyWeatherCache.findMany({
+      where: {
+        datetime: {
+          gte: todayStart
         }
-      }),
-      prisma.threeHourlyWeatherCache.findMany({
-        where: {
-          datetime: {
-            gte: todayStart
-          }
-        },
-        orderBy: {
-          datetime: 'asc'
-        }
-      })
-    ]);
-
-    // Combine both datasets for comprehensive coverage analysis
-    const allWeatherData = [
-      ...hourlyWeatherData.map(w => ({ ...w, source: 'hourly' })),
-      ...threeHourlyWeatherData.map(w => ({ ...w, source: 'three-hourly' }))
-    ].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
-    
-    const weatherData = allWeatherData;
+      },
+      orderBy: {
+        datetime: 'asc'
+      }
+    });
     
     if (weatherData.length === 0) {
       return NextResponse.json({
@@ -52,23 +32,19 @@ export async function GET(request: NextRequest) {
     const latestDate = new Date(latestForecast.datetime);
     const daysAhead = Math.floor((latestDate.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Group by day and source
+    // Group by day
     const dataByDay: { [key: string]: number } = {};
-    const dataBySource = { hourly: 0, 'three-hourly': 0 };
     
     weatherData.forEach(entry => {
       const date = new Date(entry.datetime);
       const dayKey = date.toISOString().split('T')[0];
       dataByDay[dayKey] = (dataByDay[dayKey] || 0) + 1;
-      dataBySource[entry.source as 'hourly' | 'three-hourly']++;
     });
     
     return NextResponse.json({
       status: 'success',
       summary: {
         total_forecasts: weatherData.length,
-        hourly_forecasts: dataBySource.hourly,
-        three_hourly_forecasts: dataBySource['three-hourly'],
         days_ahead: daysAhead,
         latest_forecast_date: latestDate.toISOString(),
         has_7_day_coverage: daysAhead >= 6,
