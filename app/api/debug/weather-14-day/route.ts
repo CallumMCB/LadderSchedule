@@ -78,8 +78,28 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🌤️ Manually triggering full 14-day weather update...');
     
-    // Call the weather-hourly endpoint with type=all
     const baseUrl = request.nextUrl.origin;
+    
+    // First call the daily weather API for 14-day coverage
+    console.log('🌤️ Calling daily weather API for 14-day forecast...');
+    const dailyResponse = await fetch(`${baseUrl}/api/cron/weather`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.CRON_SECRET || 'development-secret'}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    let dailyResult = null;
+    if (dailyResponse.ok) {
+      dailyResult = await dailyResponse.json();
+      console.log('✅ Daily weather API succeeded:', dailyResult.message);
+    } else {
+      console.log('⚠️ Daily weather API failed, continuing with hourly only');
+    }
+    
+    // Then call the weather-hourly endpoint with type=all for detailed hourly data
+    console.log('🌤️ Calling hourly weather API...');
     const updateResponse = await fetch(`${baseUrl}/api/cron/weather-hourly?type=all`, {
       method: 'POST',
       headers: {
@@ -102,10 +122,11 @@ export async function POST(request: NextRequest) {
     const checkResult = await checkResponse.json();
     
     return NextResponse.json({
-      update_result: updateResult,
+      daily_result: dailyResult,
+      hourly_result: updateResult,
       current_status: checkResult,
       success: true,
-      message: '14-day weather update completed'
+      message: '14-day weather update completed (daily + hourly APIs)'
     });
     
   } catch (error) {
