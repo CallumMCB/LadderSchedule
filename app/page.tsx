@@ -203,6 +203,12 @@ export default function TennisLadderScheduler() {
       setIsMobile(mobile);
       if (mobile) {
         setVisibleDays(window.innerWidth < 480 ? 2 : 4);
+        
+        // Start mobile calendar from today instead of Monday
+        const today = new Date();
+        const mondayOfWeek = startOfWeekMonday(today);
+        const todayDayIndex = Math.floor((today.getTime() - mondayOfWeek.getTime()) / (1000 * 60 * 60 * 24));
+        setDayOffset(Math.max(0, todayDayIndex));
       } else {
         setVisibleDays(7);
         setDayOffset(0);
@@ -2507,8 +2513,15 @@ function AvailabilityGrid({
           {/* Match label or score */}
           <div className="absolute inset-0 flex items-center justify-center">
             {confirmedMatch.completed && confirmedMatch.team1Score !== null && confirmedMatch.team2Score !== null ? (
-              // Show score for completed matches
-              <div className="flex items-center gap-1 text-xs font-semibold">
+              // Show score for completed matches (clickable to edit)
+              <div 
+                className="flex items-center gap-1 text-xs font-semibold cursor-pointer hover:bg-black/10 rounded px-1 py-0.5 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.location.href = '/scoring';
+                }}
+                title="Click to edit scores"
+              >
                 <div className={`px-1.5 py-0.5 rounded text-white min-w-[20px] text-center ${
                   (confirmedMatch.team1Score ?? 0) > (confirmedMatch.team2Score ?? 0) ? 'bg-green-500' : 'bg-red-500'
                 }`}>
@@ -2927,14 +2940,14 @@ function AvailabilityGrid({
   return (
     <div className="overflow-auto rounded-2xl shadow">
       <table className="w-full border-collapse">
-        <thead>
+        <thead className="sticky top-0 z-10">
           <tr>
-            <th className="bg-white border p-2 text-left">Time</th>
+            <th className="bg-white border p-2 text-left sticky top-0">Time</th>
             {days.map((d, i) => {
               const dayOfWeek = d.getDay();
               const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
               return (
-                <th key={i} className="border p-2 text-left min-w-[120px]">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
+                <th key={i} className="bg-white border p-2 text-left min-w-[120px] sticky top-0">{DAY_LABELS[dayIndex]}<div className="text-xs text-muted-foreground">{d.toLocaleDateString()}</div></th>
               );
             })}
           </tr>
