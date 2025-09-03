@@ -45,11 +45,6 @@ export default function WholeLadderPage() {
   const [ladders, setLadders] = useState<LadderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'summary' | 'scores'>('summary');
-  const [showFormatEditor, setShowFormatEditor] = useState<string | null>(null);
-  const [showFormatModal, setShowFormatModal] = useState<{
-    ladderId: string;
-    matchFormat: { sets: number; gamesPerSet: number; winnerBy: string };
-  } | null>(null);
 
   useEffect(() => {
     if (session) {
@@ -279,49 +274,6 @@ export default function WholeLadderPage() {
     return `Ladder ${currentLadderNumber}`;
   }
 
-  async function updateLadderFormat(ladderId: string, newSets: number) {
-    try {
-      console.log(`[FRONTEND] Updating ladder ${ladderId} to ${newSets} sets`);
-      console.log(`[FRONTEND] Button clicked for ${newSets} sets`);
-      
-      const newMatchFormat = {
-        sets: newSets,
-        gamesPerSet: 6,
-        winnerBy: "sets"
-      };
-
-      console.log(`[FRONTEND] Sending API request to update ladder format`);
-      console.log(`[FRONTEND] Request data:`, { ladderId, newMatchFormat });
-
-      const response = await fetch('/api/ladders/update-format', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ladderId,
-          newMatchFormat
-        })
-      });
-
-      console.log(`[FRONTEND] Response status:`, response.status);
-      console.log(`[FRONTEND] Response ok:`, response.ok);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Update result:', result);
-        console.log(`Updated ladder format and ${result.updatedMatches} matches`);
-        // Reload ladder data to reflect changes with cache busting
-        setTimeout(async () => {
-          await loadAllLadders();
-          setShowFormatEditor(null);
-        }, 500);
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update ladder format:', errorData);
-      }
-    } catch (error) {
-      console.error('Error updating ladder format:', error);
-    }
-  }
 
   function calculateMovementWithDestination(currentLadder: LadderData, position: number, totalTeams: number, allLadders: LadderData[]): string {
     const currentLadderNumber = currentLadder.number;
@@ -456,18 +408,6 @@ export default function WholeLadderPage() {
                           <span> • {ladder.matchFormat.sets} set{ladder.matchFormat.sets > 1 ? 's' : ''}</span>
                         )}
                       </p>
-                    </div>
-                    <div>
-                      <Button 
-                        onClick={() => setShowFormatModal({
-                          ladderId: ladder.id,
-                          matchFormat: ladder.matchFormat || { sets: 3, gamesPerSet: 6, winnerBy: 'sets' }
-                        })}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Change Format
-                      </Button>
                     </div>
                   </div>
 
@@ -678,122 +618,6 @@ export default function WholeLadderPage() {
         </div>
       )}
 
-      {/* Format Settings Modal - Copied from scoring page */}
-      {showFormatModal && (
-        <div className="fixed inset-0 z-50">
-          <div 
-            className="absolute inset-0 bg-black bg-opacity-50" 
-            onClick={() => setShowFormatModal(null)}
-          />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg border p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Match Format Settings</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Number of Sets</label>
-                <select
-                  value={showFormatModal.matchFormat.sets}
-                  onChange={(e) => setShowFormatModal(prev => prev ? {
-                    ...prev,
-                    matchFormat: { ...prev.matchFormat, sets: parseInt(e.target.value) }
-                  } : null)}
-                  className="w-full p-2 border rounded-lg"
-                >
-                  <option value={1}>1 Set</option>
-                  <option value={3}>3 Sets (Best of 3)</option>
-                  <option value={5}>5 Sets (Best of 5)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Games per Set</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={showFormatModal.matchFormat.gamesPerSet}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    if (!isNaN(value) && value >= 1 && value <= 20) {
-                      setShowFormatModal(prev => prev ? {
-                        ...prev,
-                        matchFormat: { ...prev.matchFormat, gamesPerSet: value }
-                      } : null);
-                    }
-                  }}
-                  className="w-full p-2 border rounded-lg"
-                  placeholder="6"
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter number of games per set (1-20)</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Winner Determined By</label>
-                <select
-                  value={showFormatModal.matchFormat.winnerBy}
-                  onChange={(e) => setShowFormatModal(prev => prev ? {
-                    ...prev,
-                    matchFormat: { ...prev.matchFormat, winnerBy: e.target.value as 'sets' | 'games' }
-                  } : null)}
-                  className="w-full p-2 border rounded-lg"
-                >
-                  <option value="sets">Most Sets Won</option>
-                  <option value="games">Most Games Won</option>
-                </select>
-              </div>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                <div className="font-medium text-blue-900 mb-1">Current Format:</div>
-                <div className="text-blue-800">
-                  {showFormatModal.matchFormat.sets === 1 ? '1 Set' : `Best of ${showFormatModal.matchFormat.sets} Sets`} • {showFormatModal.matchFormat.gamesPerSet} Games per Set
-                  <br />
-                  Winner: {showFormatModal.matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-3 justify-end mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowFormatModal(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!showFormatModal) return;
-                  
-                  try {
-                    const response = await fetch('/api/ladders/update-format', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        ladderId: showFormatModal.ladderId,
-                        newMatchFormat: showFormatModal.matchFormat
-                      }),
-                    });
-
-                    if (response.ok) {
-                      setShowFormatModal(null);
-                      // Reload data to reflect changes
-                      setTimeout(async () => {
-                        await loadAllLadders();
-                      }, 500);
-                    } else {
-                      const error = await response.json();
-                      console.error('Failed to update format:', error);
-                    }
-                  } catch (error) {
-                    console.error('Network error updating format:', error);
-                  }
-                }}
-              >
-                Save Format
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
