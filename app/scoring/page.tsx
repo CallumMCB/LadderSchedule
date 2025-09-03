@@ -940,10 +940,43 @@ export default function ScoringPage() {
                           const rowTeamScore = isRowTeamFirst ? scoreData.team1Score : scoreData.team2Score;
                           const colTeamScore = isRowTeamFirst ? scoreData.team2Score : scoreData.team1Score;
 
+                          // Check if match is completed
+                          if (match.completed && match.team1Score !== null && match.team2Score !== null) {
+                            const rowSetsWon = isRowTeamFirst ? match.team1Score : match.team2Score;
+                            const colSetsWon = isRowTeamFirst ? match.team2Score : match.team1Score;
+                            const rowWon = rowSetsWon > colSetsWon;
+                            const colWon = colSetsWon > rowSetsWon;
+                            
+                            return (
+                              <td key={colTeam.id} className="p-2">
+                                <div className="flex justify-center">
+                                  {/* Completed match display */}
+                                  <div
+                                    onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
+                                    className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
+                                    title="Click to view/edit scores"
+                                  >
+                                    <div className="flex items-center justify-center gap-1 text-sm font-semibold">
+                                      {/* Row team score with background color */}
+                                      <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${rowWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                        {rowSetsWon}
+                                      </div>
+                                      <div className="text-gray-400">-</div>
+                                      {/* Column team score with background color */}
+                                      <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${colWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                        {colSetsWon}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          }
+
                           return (
                             <td key={colTeam.id} className="p-2">
                               <div className="flex justify-center">
-                                {/* Clickable scoring table */}
+                                {/* Clickable scoring table for ongoing matches */}
                                 <div
                                   onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
                                   className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
