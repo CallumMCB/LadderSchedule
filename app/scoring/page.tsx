@@ -513,7 +513,16 @@ export default function ScoringPage() {
     }
   }
 
-  function openEditScoreModal(matchId: string, team1: Team, team2: Team) {
+  function openEditScoreModal(matchId: string, displayTeam1: Team, displayTeam2: Team) {
+    const match = teamsData.matches.find(m => m.id === matchId);
+    if (!match) return;
+    
+    // Get the actual teams based on match.team1Id and match.team2Id (database order)
+    const actualTeam1 = teams.find(t => t.id === match.team1Id);
+    const actualTeam2 = teams.find(t => t.id === match.team2Id);
+    
+    if (!actualTeam1 || !actualTeam2) return;
+    
     const currentScores = scores[matchId] || { team1Score: "", team2Score: "" };
     setEditingScores({
       team1Score: currentScores.team1Score,
@@ -521,10 +530,10 @@ export default function ScoringPage() {
     });
     setShowEditScoreModal({
       matchId,
-      team1Name: getTeamDisplayName(team1),
-      team2Name: getTeamDisplayName(team2),
-      team1Color: team1.color,
-      team2Color: team2.color
+      team1Name: getTeamDisplayName(actualTeam1),
+      team2Name: getTeamDisplayName(actualTeam2),
+      team1Color: actualTeam1.color,
+      team2Color: actualTeam2.color
     });
   }
 
