@@ -2504,11 +2504,29 @@ function AvailabilityGrid({
             className="absolute right-0 top-0 bottom-0 left-1/2"
             style={{ backgroundColor: team2?.color || '#EF4444' }}
           />
-          {/* Match label */}
+          {/* Match label or score */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs text-white bg-red-600 bg-opacity-90 px-1 rounded font-semibold">
-              MATCH
-            </span>
+            {confirmedMatch.completed && confirmedMatch.team1Score !== null && confirmedMatch.team2Score !== null ? (
+              // Show score for completed matches
+              <div className="flex items-center gap-1 text-xs font-semibold">
+                <div className={`px-1.5 py-0.5 rounded text-white min-w-[20px] text-center ${
+                  (confirmedMatch.team1Score ?? 0) > (confirmedMatch.team2Score ?? 0) ? 'bg-green-500' : 'bg-red-500'
+                }`}>
+                  {confirmedMatch.team1Score}
+                </div>
+                <div className="text-white text-xs">-</div>
+                <div className={`px-1.5 py-0.5 rounded text-white min-w-[20px] text-center ${
+                  (confirmedMatch.team2Score ?? 0) > (confirmedMatch.team1Score ?? 0) ? 'bg-green-500' : 'bg-red-500'
+                }`}>
+                  {confirmedMatch.team2Score}
+                </div>
+              </div>
+            ) : (
+              // Show "MATCH" for scheduled but not completed matches
+              <span className="text-xs text-white bg-red-600 bg-opacity-90 px-1 rounded font-semibold">
+                MATCH
+              </span>
+            )}
           </div>
         </div>
       );
