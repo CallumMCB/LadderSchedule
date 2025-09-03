@@ -944,8 +944,8 @@ export default function ScoringPage() {
                           if (match.completed && match.team1Score !== null && match.team2Score !== null) {
                             const rowSetsWon = isRowTeamFirst ? match.team1Score : match.team2Score;
                             const colSetsWon = isRowTeamFirst ? match.team2Score : match.team1Score;
-                            const rowWon = rowSetsWon > colSetsWon;
-                            const colWon = colSetsWon > rowSetsWon;
+                            const rowWon = (rowSetsWon ?? 0) > (colSetsWon ?? 0);
+                            const colWon = (colSetsWon ?? 0) > (rowSetsWon ?? 0);
                             
                             return (
                               <td key={colTeam.id} className="p-2">
