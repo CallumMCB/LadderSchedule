@@ -145,8 +145,8 @@ export async function POST(request: NextRequest) {
       // Skip data older than today
       if (daysFromToday < 0) return false;
       
-      // Don't update beyond 2 days (48 hours) - three-hourly API handles days 3-7
-      if (daysFromToday >= 2) return false;
+      // Don't update beyond 7 days - test if Met Office hourly API actually provides more data
+      if (daysFromToday >= 7) return false;
       
       // Handle specific update types
       if (updateType === 'all') return true;

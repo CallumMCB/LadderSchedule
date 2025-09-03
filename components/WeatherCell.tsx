@@ -75,7 +75,7 @@ export function WeatherCell({ slotKey, className = "", showWeather = true }: Wea
   if (!weatherInfo || !showWeather) return null;
 
   return (
-    <div className={`absolute top-0 right-0 p-0.5 pointer-events-auto z-10 ${className}`}>
+    <div className={`absolute top-0 right-0 p-0.5 pointer-events-auto z-20 ${className}`}>
       {/* Weather Column - Vertical Layout */}
       <div 
         className="flex flex-col items-center bg-white bg-opacity-90 rounded-sm px-1 py-1 shadow-sm cursor-help relative"
@@ -88,7 +88,7 @@ export function WeatherCell({ slotKey, className = "", showWeather = true }: Wea
         
         {/* Detailed Weather Popup */}
         {showPopup && detailedWeather && (
-          <div className="absolute top-0 right-full mr-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-64 z-50">
+          <div className="absolute top-0 right-full mr-2 bg-white border border-gray-200 rounded-lg shadow-xl p-3 min-w-64 z-[9999] max-w-xs pointer-events-auto" style={{ transform: 'translateY(-10px)' }}>
             <div className="text-sm font-semibold text-gray-800 mb-2">
               {new Date(slotKey).toLocaleString('en-GB', {
                 weekday: 'short',
