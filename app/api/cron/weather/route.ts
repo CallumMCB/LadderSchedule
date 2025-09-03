@@ -163,36 +163,89 @@ export async function POST(request: NextRequest) {
       const normalizedDate = new Date(britishForecastDate.getFullYear(), britishForecastDate.getMonth(), britishForecastDate.getDate());
       
       try {
-        // Upsert weather cache entry
-        await prisma.weatherCache.upsert({
-          where: { date: normalizedDate },
+        // Create daily weather entries in hourly table for better compatibility
+        // Create representative hourly entries for morning (9am) and afternoon (3pm) 
+        const morningTime = new Date(normalizedDate);
+        morningTime.setHours(9, 0, 0, 0);
+        
+        const afternoonTime = new Date(normalizedDate);
+        afternoonTime.setHours(15, 0, 0, 0);
+        
+        // Morning entry (cooler, using min temp)
+        await prisma.hourlyWeatherCache.upsert({
+          where: { datetime: morningTime },
           update: {
-            temperature: Math.round(forecast.dayMaxScreenTemperature || 20),
-            minTemperature: Math.round(forecast.nightMinScreenTemperature || 10),
+            temperature: forecast.nightMinScreenTemperature || 10,
+            feelsLikeTemperature: forecast.nightMinScreenTemperature || 10,
             weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
             precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
-            windSpeed: Math.round(forecast.midday10MWindSpeed || 0),
-            windDirection: forecast.midday10MWindDirection ? `${Math.round(forecast.midday10MWindDirection)}°` : 'Variable',
-            uvIndex: 0, // UV index not available in this API version
-            visibility: forecast.middayVisibility ? `${Math.round(forecast.middayVisibility / 1000)}km` : 'Good',
-            humidity: Math.round(forecast.middayRelativeHumidity || 50),
+            precipitationRate: 0,
+            windSpeed: forecast.midday10MWindSpeed || 0,
+            windDirection: Math.round(forecast.midday10MWindDirection || 0),
+            windGust: forecast.midday10MWindSpeed || 0,
+            uvIndex: Math.round((forecast.maxUvIndex || 0) * 0.6), // Lower UV in morning
+            visibility: Math.round(forecast.middayVisibility || 10000),
+            humidity: forecast.middayRelativeHumidity || 50,
+            pressure: 101325, // Standard pressure
+            dewPoint: (forecast.nightMinScreenTemperature || 10) - 5,
             updatedAt: new Date()
           },
           create: {
-            date: normalizedDate,
-            temperature: Math.round(forecast.dayMaxScreenTemperature || 20),
-            minTemperature: Math.round(forecast.nightMinScreenTemperature || 10),
+            datetime: morningTime,
+            temperature: forecast.nightMinScreenTemperature || 10,
+            feelsLikeTemperature: forecast.nightMinScreenTemperature || 10,
             weatherType: getWeatherDescription(forecast.nightSignificantWeatherCode?.toString() || '1'),
             precipitationProbability: Math.round(forecast.nightProbabilityOfPrecipitation || 0),
-            windSpeed: Math.round(forecast.midday10MWindSpeed || 0),
-            windDirection: forecast.midday10MWindDirection ? `${Math.round(forecast.midday10MWindDirection)}°` : 'Variable',
-            uvIndex: 0, // UV index not available in this API version
-            visibility: forecast.middayVisibility ? `${Math.round(forecast.middayVisibility / 1000)}km` : 'Good',
-            humidity: Math.round(forecast.middayRelativeHumidity || 50)
+            precipitationRate: 0,
+            windSpeed: forecast.midday10MWindSpeed || 0,
+            windDirection: Math.round(forecast.midday10MWindDirection || 0),
+            windGust: forecast.midday10MWindSpeed || 0,
+            uvIndex: Math.round((forecast.maxUvIndex || 0) * 0.6),
+            visibility: Math.round(forecast.middayVisibility || 10000),
+            humidity: forecast.middayRelativeHumidity || 50,
+            pressure: 101325,
+            dewPoint: (forecast.nightMinScreenTemperature || 10) - 5
+          }
+        });
+
+        // Afternoon entry (warmer, using max temp)
+        await prisma.hourlyWeatherCache.upsert({
+          where: { datetime: afternoonTime },
+          update: {
+            temperature: forecast.dayMaxScreenTemperature || 20,
+            feelsLikeTemperature: forecast.dayMaxScreenTemperature || 20,
+            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || forecast.nightSignificantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || forecast.nightProbabilityOfPrecipitation || 0),
+            precipitationRate: 0,
+            windSpeed: forecast.midday10MWindSpeed || 0,
+            windDirection: Math.round(forecast.midday10MWindDirection || 0),
+            windGust: forecast.midday10MWindSpeed || 0,
+            uvIndex: Math.round(forecast.maxUvIndex || 0),
+            visibility: Math.round(forecast.middayVisibility || 10000),
+            humidity: forecast.middayRelativeHumidity || 50,
+            pressure: 101325,
+            dewPoint: (forecast.dayMaxScreenTemperature || 20) - 10,
+            updatedAt: new Date()
+          },
+          create: {
+            datetime: afternoonTime,
+            temperature: forecast.dayMaxScreenTemperature || 20,
+            feelsLikeTemperature: forecast.dayMaxScreenTemperature || 20,
+            weatherType: getWeatherDescription(forecast.daySignificantWeatherCode?.toString() || forecast.nightSignificantWeatherCode?.toString() || '1'),
+            precipitationProbability: Math.round(forecast.dayProbabilityOfPrecipitation || forecast.nightProbabilityOfPrecipitation || 0),
+            precipitationRate: 0,
+            windSpeed: forecast.midday10MWindSpeed || 0,
+            windDirection: Math.round(forecast.midday10MWindDirection || 0),
+            windGust: forecast.midday10MWindSpeed || 0,
+            uvIndex: Math.round(forecast.maxUvIndex || 0),
+            visibility: Math.round(forecast.middayVisibility || 10000),
+            humidity: forecast.middayRelativeHumidity || 50,
+            pressure: 101325,
+            dewPoint: (forecast.dayMaxScreenTemperature || 20) - 10
           }
         });
         
-        updatedCount++;
+        updatedCount += 2; // We create 2 hourly entries per day
       } catch (error) {
         console.error(`Failed to update weather for ${normalizedDate.toISOString().split('T')[0]}:`, error);
       }
@@ -201,10 +254,11 @@ export async function POST(request: NextRequest) {
     // Clean up old weather data (older than 1 day) - using British time
     const cutoffDate = new Date(britishNow);
     cutoffDate.setDate(cutoffDate.getDate() - 1);
+    cutoffDate.setHours(6, 0, 0, 0); // 6am cutoff
     
-    const deletedCount = await prisma.weatherCache.deleteMany({
+    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
       where: {
-        date: {
+        datetime: {
           lt: cutoffDate
         }
       }

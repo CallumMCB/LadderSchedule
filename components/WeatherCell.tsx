@@ -3,6 +3,20 @@
 import { useState, useEffect } from 'react';
 import { getWeatherEmoji, getWindDirectionEmoji } from "@/lib/weather";
 
+function getSunscreenRecommendation(uvIndex: number): { spf: string; warning: string; color: string } {
+  if (uvIndex <= 2) {
+    return { spf: "SPF 15", warning: "Low risk - minimal protection needed", color: "text-green-600" };
+  } else if (uvIndex <= 5) {
+    return { spf: "SPF 30", warning: "Moderate risk - protection recommended", color: "text-yellow-600" };
+  } else if (uvIndex <= 7) {
+    return { spf: "SPF 30-50", warning: "High risk - protection essential", color: "text-orange-600" };
+  } else if (uvIndex <= 10) {
+    return { spf: "SPF 50+", warning: "Very high risk - extra protection required", color: "text-red-600" };
+  } else {
+    return { spf: "SPF 50+", warning: "Extreme risk - avoid midday sun", color: "text-purple-600" };
+  }
+}
+
 interface WeatherCellProps {
   slotKey: string;
   className?: string;
@@ -111,7 +125,17 @@ export function WeatherCell({ slotKey, className = "", showWeather = true }: Wea
                 )}
                 
                 {detailedWeather.uvIndex !== null && detailedWeather.uvIndex !== undefined && (
-                  <div>UV Index: <span className="font-medium">{detailedWeather.uvIndex}</span></div>
+                  <div className="col-span-2">
+                    <div>UV Index: <span className="font-medium">{detailedWeather.uvIndex}</span></div>
+                    {(() => {
+                      const sunscreenRec = getSunscreenRecommendation(detailedWeather.uvIndex);
+                      return (
+                        <div className={`text-xs mt-1 ${sunscreenRec.color}`}>
+                          ☀️ {sunscreenRec.spf} recommended - {sunscreenRec.warning}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
               
