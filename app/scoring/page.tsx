@@ -1191,7 +1191,8 @@ export default function ScoringPage() {
                             
                             return (
                               <div key={match.id} className="flex items-center justify-between p-3 border rounded-lg bg-blue-50">
-                                <div className="flex items-center gap-3">
+                                {/* Desktop view */}
+                                <div className="hidden md:flex items-center gap-3">
                                   <div 
                                     className="w-3 h-3 rounded"
                                     style={{ backgroundColor: team1?.color }}
@@ -1208,8 +1209,32 @@ export default function ScoringPage() {
                                     {team2 ? getTeamDisplayName(team2) : 'Unknown'}
                                   </span>
                                 </div>
+                                
+                                {/* Mobile view */}
+                                <div className="md:hidden flex items-center gap-3">
+                                  <div className="flex flex-col items-center">
+                                    <div 
+                                      className="w-4 h-4 rounded"
+                                      style={{ backgroundColor: team1?.color }}
+                                    />
+                                    <span className="text-xs font-medium mt-1">
+                                      {team1 ? getTeamInitials(team1) : '?'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs">vs</div>
+                                  <div className="flex flex-col items-center">
+                                    <div 
+                                      className="w-4 h-4 rounded"
+                                      style={{ backgroundColor: team2?.color }}
+                                    />
+                                    <span className="text-xs font-medium mt-1">
+                                      {team2 ? getTeamInitials(team2) : '?'}
+                                    </span>
+                                  </div>
+                                </div>
                                 <div className="flex items-center gap-3 text-sm">
-                                  <span className="text-gray-500">
+                                  {/* Desktop: Show date and time */}
+                                  <span className="hidden md:inline text-gray-500">
                                     {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                   </span>
                                   {hasScore && (
@@ -1253,7 +1278,8 @@ export default function ScoringPage() {
                               
                               return (
                                 <div key={match.id} className="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
-                                  <div className="flex items-center gap-3">
+                                  {/* Desktop view */}
+                                  <div className="hidden md:flex items-center gap-3">
                                     <div 
                                       className="w-3 h-3 rounded"
                                       style={{ backgroundColor: team1?.color }}
@@ -1270,8 +1296,32 @@ export default function ScoringPage() {
                                       {team2 ? getTeamDisplayName(team2) : 'Unknown'}
                                     </span>
                                   </div>
+                                  
+                                  {/* Mobile view */}
+                                  <div className="md:hidden flex items-center gap-3">
+                                    <div className="flex flex-col items-center">
+                                      <div 
+                                        className="w-4 h-4 rounded"
+                                        style={{ backgroundColor: team1?.color }}
+                                      />
+                                      <span className="text-xs font-medium mt-1">
+                                        {team1 ? getTeamInitials(team1) : '?'}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs">vs</div>
+                                    <div className="flex flex-col items-center">
+                                      <div 
+                                        className="w-4 h-4 rounded"
+                                        style={{ backgroundColor: team2?.color }}
+                                      />
+                                      <span className="text-xs font-medium mt-1">
+                                        {team2 ? getTeamInitials(team2) : '?'}
+                                      </span>
+                                    </div>
+                                  </div>
                                   <div className="flex items-center gap-3 text-sm">
-                                    <span className="text-gray-500">
+                                    {/* Desktop: Show date and time */}
+                                    <span className="hidden md:inline text-gray-500">
                                       {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                     </span>
                                     <span className="text-yellow-600 text-xs">⚠️ Missed</span>
@@ -1303,7 +1353,8 @@ export default function ScoringPage() {
                             
                             return (
                               <div key={match.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50">
-                                <div className="flex items-center gap-3">
+                                {/* Desktop view */}
+                                <div className="hidden md:flex items-center gap-3">
                                   <div 
                                     className="w-3 h-3 rounded"
                                     style={{ backgroundColor: team1?.color }}
@@ -1320,8 +1371,32 @@ export default function ScoringPage() {
                                     {team2 ? getTeamDisplayName(team2) : 'Unknown'}
                                   </span>
                                 </div>
+                                
+                                {/* Mobile view */}
+                                <div className="md:hidden flex items-center gap-3">
+                                  <div className="flex flex-col items-center">
+                                    <div 
+                                      className="w-4 h-4 rounded"
+                                      style={{ backgroundColor: team1?.color }}
+                                    />
+                                    <span className="text-xs font-medium mt-1">
+                                      {team1 ? getTeamInitials(team1) : '?'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs">vs</div>
+                                  <div className="flex flex-col items-center">
+                                    <div 
+                                      className="w-4 h-4 rounded"
+                                      style={{ backgroundColor: team2?.color }}
+                                    />
+                                    <span className="text-xs font-medium mt-1">
+                                      {team2 ? getTeamInitials(team2) : '?'}
+                                    </span>
+                                  </div>
+                                </div>
                                 <div className="flex items-center gap-3 text-sm">
-                                  <span className="text-gray-500">
+                                  {/* Desktop: Show date and time */}
+                                  <span className="hidden md:inline text-gray-500">
                                     {new Date(match.startAt).toLocaleDateString()} at {new Date(match.startAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                   </span>
                                   {hasScore && (
