@@ -942,29 +942,72 @@ export default function ScoringPage() {
 
                           // Check if match is completed
                           if (match.completed && match.team1Score !== null && match.team2Score !== null) {
+                            const rowScoreString = isRowTeamFirst ? rowTeamScore : colTeamScore;
+                            const colScoreString = isRowTeamFirst ? colTeamScore : rowTeamScore;
                             const rowSetsWon = isRowTeamFirst ? match.team1Score : match.team2Score;
                             const colSetsWon = isRowTeamFirst ? match.team2Score : match.team1Score;
                             const rowWon = (rowSetsWon ?? 0) > (colSetsWon ?? 0);
                             const colWon = (colSetsWon ?? 0) > (rowSetsWon ?? 0);
                             
+                            // Parse set scores for detailed display
+                            const rowSets = rowScoreString.split(',').map(s => s.trim()).filter(s => s !== '' && s !== 'X');
+                            const colSets = colScoreString.split(',').map(s => s.trim()).filter(s => s !== '' && s !== 'X');
+                            const maxSets = Math.max(rowSets.length, colSets.length);
+                            
                             return (
                               <td key={colTeam.id} className="p-2">
                                 <div className="flex justify-center">
-                                  {/* Completed match display */}
-                                  <div
-                                    onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
-                                    className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
-                                    title="Click to view/edit scores"
-                                  >
-                                    <div className="flex items-center justify-center gap-1 text-sm font-semibold">
-                                      {/* Row team score with background color */}
-                                      <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${rowWon ? 'bg-green-500' : 'bg-red-500'}`}>
-                                        {rowSetsWon}
+                                  {/* Desktop: Detailed view with games per set */}
+                                  <div className="hidden md:block">
+                                    <div
+                                      onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
+                                      className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
+                                      title="Click to edit scores"
+                                    >
+                                      <div className="text-xs space-y-1">
+                                        {Array.from({ length: maxSets }, (_, setIndex) => {
+                                          const rowSetScore = rowSets[setIndex] || '';
+                                          const colSetScore = colSets[setIndex] || '';
+                                          const rowSetWon = parseInt(rowSetScore) > parseInt(colSetScore);
+                                          const colSetWon = parseInt(colSetScore) > parseInt(rowSetScore);
+                                          
+                                          return (
+                                            <div key={setIndex} className="flex items-center justify-center gap-1">
+                                              <div className={`px-1 py-0.5 rounded text-xs min-w-[20px] text-center ${
+                                                rowSetWon ? 'bg-green-100 text-green-800 font-semibold' : 
+                                                colSetWon ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                                              }`}>
+                                                {rowSetScore}
+                                              </div>
+                                              <div className="text-gray-400 text-xs">-</div>
+                                              <div className={`px-1 py-0.5 rounded text-xs min-w-[20px] text-center ${
+                                                colSetWon ? 'bg-green-100 text-green-800 font-semibold' : 
+                                                rowSetWon ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                                              }`}>
+                                                {colSetScore}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
-                                      <div className="text-gray-400">-</div>
-                                      {/* Column team score with background color */}
-                                      <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${colWon ? 'bg-green-500' : 'bg-red-500'}`}>
-                                        {colSetsWon}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Mobile: Compact view with popup */}
+                                  <div className="md:hidden">
+                                    <div
+                                      onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
+                                      className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
+                                      title="Click to view/edit scores"
+                                    >
+                                      <div className="flex items-center justify-center gap-1 text-sm font-semibold">
+                                        <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${rowWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                          {rowSetsWon}
+                                        </div>
+                                        <div className="text-gray-400">-</div>
+                                        <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${colWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                          {colSetsWon}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
