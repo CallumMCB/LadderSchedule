@@ -148,20 +148,34 @@ export async function POST(request: NextRequest) {
       // Don't update beyond 14 days
       if (daysFromToday >= 14) return false;
       
+      // Handle specific update types
       if (updateType === 'all') return true;
       
-      // Smart update logic based on proximity to today
+      if (updateType === 'today') {
+        // Today only
+        return daysFromToday === 0;
+      }
+      
+      if (updateType === 'week') {
+        // This week (days 1-7)
+        return daysFromToday >= 1 && daysFromToday <= 7;
+      }
+      
+      if (updateType === 'extended') {
+        // Extended forecast (days 8-14)
+        return daysFromToday >= 8 && daysFromToday < 14;
+      }
+      
+      // Default smart update logic
       if (daysFromToday === 0) {
         // Today: always update (hourly updates)
         return true;
       } else if (daysFromToday <= 7) {
-        // This week (days 1-7): update every 2 hours
-        const hoursSinceLastUpdate = Math.floor((Date.now() - (forecastHour.getTime() - daysFromToday * 24 * 60 * 60 * 1000)) / (1000 * 60 * 60));
-        return hoursSinceLastUpdate >= 2;
+        // This week (days 1-7): always update for now
+        return true;
       } else {
-        // Next week (days 8-14): update every 6 hours  
-        const hoursSinceLastUpdate = Math.floor((Date.now() - (forecastHour.getTime() - daysFromToday * 24 * 60 * 60 * 1000)) / (1000 * 60 * 60));
-        return hoursSinceLastUpdate >= 6;
+        // Next week (days 8-14): always update for now
+        return true;
       }
     };
     

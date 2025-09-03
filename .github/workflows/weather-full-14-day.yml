@@ -1,0 +1,21 @@
+name: Full 14-Day Weather Update
+
+on:
+  schedule:
+    # Runs once daily at 5am GMT to ensure complete 14-day forecast
+    - cron: '0 5 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-full-forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Complete 14-Day Forecast
+        run: |
+          echo "🌤️ Updating complete 14-day weather forecast..."
+          curl -X POST "https://www.ladderschedule.com/api/cron/weather-hourly?type=all" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --retry 3 \
+            --retry-delay 5 \
+            --max-time 60
