@@ -94,6 +94,33 @@ async function fetchMetOfficeThreeHourlyWeather() {
   return response.json();
 }
 
+function getBritishParts(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+  return {
+    year: parseInt(parts.find(p => p.type === 'year')!.value),
+    month: parseInt(parts.find(p => p.type === 'month')!.value),
+    day: parseInt(parts.find(p => p.type === 'day')!.value),
+    hour: parseInt(parts.find(p => p.type === 'hour')!.value),
+    minute: parseInt(parts.find(p => p.type === 'minute')!.value),
+    second: parseInt(parts.find(p => p.type === 'second')!.value)
+  };
+}
+
+function toBritishWallClockDate(date: Date): Date {
+  const bp = getBritishParts(date);
+  // Construct a UTC Date whose components match the London wall-clock time
+  return new Date(Date.UTC(bp.year, bp.month - 1, bp.day, bp.hour, bp.minute, bp.second));
+}
+
 /**
  * Three-hourly updater (integrated policy):
  * - Stores >48h up to 7 days ahead
@@ -110,6 +137,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Debug/testing flags
+    const url = new URL(request.url);
+    const skipAlignment = url.searchParams.get('noAlign') === '1';
+    const skipHours = url.searchParams.get('allHours') === '1';
+
     console.log('🌤️ Starting three-hourly (48h–7d) weather cache update...');
     
     const weatherData = await fetchMetOfficeThreeHourlyWeather();
@@ -120,32 +152,39 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Met Office returned ${weatherData.features[0].properties.timeSeries.length} three-hourly forecasts`);
 
     const now = new Date();
-    const britishNow = convertToBritishTime(now);
+    const britishNow = toBritishWallClockDate(now);
     const after48h = new Date(britishNow.getTime() + 48 * 60 * 60 * 1000);
     const until7d = new Date(britishNow.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    console.log(`⏰ Time boundaries: Now=${britishNow.toISOString()}, After48h=${after48h.toISOString()}, Until7d=${until7d.toISOString()}`);
+    console.log(`⏰ Time boundaries (British wall-clock as UTC): Now=${britishNow.toISOString()}, After48h=${after48h.toISOString()}, Until7d=${until7d.toISOString()}`);
 
     let updatedCount = 0;
     let skippedTime = 0, skippedHours = 0, skippedAlignment = 0;
+    const sample: Array<{utc:string, utcHour:number, britishHour:number}> = [];
 
     for (const forecast of weatherData.features[0].properties.timeSeries) {
-      const forecastDateTime = new Date(forecast.time);
-      const britishDateTime = convertToBritishTime(forecastDateTime);
+      const forecastInstant = new Date(forecast.time); // true UTC instant
+      const bp = getBritishParts(forecastInstant);
+      const britishDateTime = new Date(Date.UTC(bp.year, bp.month - 1, bp.day, bp.hour, 0, 0, 0));
 
-      // Only >48h and ≤7d 
+      if (sample.length < 8) sample.push({ utc: forecastInstant.toISOString(), utcHour: forecastInstant.getUTCHours(), britishHour: bp.hour });
+
+      // Only >48h and ≤7d relative to British wall-clock timeline
       if (britishDateTime <= after48h || britishDateTime > until7d) {
         skippedTime++;
         continue;
       }
 
-      // Tennis hours & 3-hour alignment (extend to 22:00 like hourly)
-      const h = britishDateTime.getHours();
-      if (h < 6 || h > 22) {
+      // Tennis hours in British time (optional bypass)
+      const h = bp.hour;
+      if (!skipHours && (h < 6 || h > 22)) {
         skippedHours++;
         continue;
       }
-      if (h % 3 !== 0) {
+
+      // Three-hour alignment based on UTC cadence (optional bypass)
+      const isAligned = forecastInstant.getUTCHours() % 3 === 0;
+      if (!skipAlignment && !isAligned) {
         skippedAlignment++;
         continue;
       }
@@ -206,7 +245,7 @@ export async function POST(request: NextRequest) {
       message: `Updated ${updatedCount} three-hourly forecasts (48h–7d), cleaned ${deletedCount.count} old records`,
       updatedCount,
       deletedCount: deletedCount.count,
-      debug: { skippedTime, skippedHours, skippedAlignment }
+      debug: { skippedTime, skippedHours, skippedAlignment, alignmentRule: 'UTC hour ≡ 0 (mod 3)', note: 'British wall-clock stored as UTC for keys', sample }
     });
 
   } catch (error) {
