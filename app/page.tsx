@@ -1564,14 +1564,14 @@ export default function TennisLadderScheduler() {
             </div>
           )}
         </div>
-        <div className="flex flex-row items-center gap-3 text-sm">
+        <div className="flex flex-row items-center gap-3 text-sm flex-shrink-0">
           <span className="text-gray-600 whitespace-nowrap">Show times:</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <Button
               variant={showEarlyTimes ? "default" : "outline"}
               size="sm"
               onClick={() => setShowEarlyTimes(!showEarlyTimes)}
-              className="text-xs"
+              className="text-xs whitespace-nowrap"
             >
               {showEarlyTimes ? "Hide" : "Show"} early
             </Button>
@@ -1579,7 +1579,7 @@ export default function TennisLadderScheduler() {
               variant={showLateTimes ? "default" : "outline"}
               size="sm"
               onClick={() => setShowLateTimes(!showLateTimes)}
-              className="text-xs"
+              className="text-xs whitespace-nowrap"
             >
               {showLateTimes ? "Hide" : "Show"} late
             </Button>
