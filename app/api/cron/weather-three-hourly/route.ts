@@ -117,6 +117,15 @@ export async function POST(request: NextRequest) {
     // Fetch weather data from Met Office
     const weatherData = await fetchMetOfficeThreeHourlyWeather();
     
+    console.log('Three-hourly Weather API - Raw response structure:', JSON.stringify({
+      hasFeatures: !!weatherData.features,
+      featuresLength: weatherData.features?.length,
+      hasProperties: !!weatherData.features?.[0]?.properties,
+      propertyKeys: weatherData.features?.[0]?.properties ? Object.keys(weatherData.features[0].properties) : [],
+      hasTimeSeries: !!weatherData.features?.[0]?.properties?.timeSeries,
+      timeSeriesLength: weatherData.features?.[0]?.properties?.timeSeries?.length
+    }, null, 2));
+    
     console.log('Three-hourly Weather API - Raw response keys:', Object.keys(weatherData));
     
     if (!weatherData?.features?.[0]?.properties?.timeSeries) {
