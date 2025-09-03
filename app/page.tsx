@@ -1376,10 +1376,10 @@ export default function TennisLadderScheduler() {
     'End date not set';
 
   return (
-    <div className="max-w-6xl mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
+    <div className="w-full sm:max-w-6xl sm:mx-auto p-0 sm:p-4 space-y-0 sm:space-y-6">
       {/* Ladder Info Header */}
       {ladderInfo?.currentLadder && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="bg-blue-50 border-0 sm:border sm:border-blue-200 rounded-none sm:rounded-lg p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-lg font-semibold text-blue-900">
@@ -1405,8 +1405,8 @@ export default function TennisLadderScheduler() {
 
       {/* Teams Display */}
       {teamsData.teams.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
+        <div className="border-0 sm:border sm:border-gray-200 rounded-none sm:rounded-lg p-4 sm:bg-white bg-transparent sm:shadow-sm">
+          <div className="">
             <div className="flex flex-wrap gap-3">
               {teamsData.teams.map((team) => (
                 <div 
@@ -1433,13 +1433,13 @@ export default function TennisLadderScheduler() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Team/Player Selection for Acting On Behalf */}
-      <Card>
-        <CardContent className="p-3">
+      <div className="border-0 sm:border sm:border-gray-200 rounded-none sm:rounded-lg p-3 sm:bg-white bg-transparent sm:shadow-sm">
+        <div className="">
           <div className="flex items-center gap-4 text-sm">
             <span className="font-medium">Act on behalf of:</span>
             <select 
@@ -1514,11 +1514,11 @@ export default function TennisLadderScheduler() {
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Week Navigation */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-3 sm:px-0">
         {isMobile ? (
           <>
             {/* Mobile Day Navigation */}
@@ -1552,7 +1552,7 @@ export default function TennisLadderScheduler() {
       </div>
 
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-3 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
           {isBlockSelectMode && (
             <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 rounded">
@@ -1614,9 +1614,9 @@ export default function TennisLadderScheduler() {
         weatherCanLoad={weatherCanLoad}
       />
 
-      <details>
+      <details className="px-3 sm:px-0">
         <summary className="cursor-pointer text-sm text-muted-foreground">Recent Activity</summary>
-        <div className="text-xs bg-muted/50 p-3 rounded-xl space-y-1 max-h-64 overflow-y-auto">
+        <div className="text-xs bg-muted/50 p-3 rounded-none sm:rounded-xl space-y-1 max-h-64 overflow-y-auto">
           <div className="font-medium mb-2">Recent Calendar Changes:</div>
           {recentActivities.length === 0 ? (
             <div className="text-muted-foreground italic">No recent activity</div>
@@ -2895,7 +2895,7 @@ function AvailabilityGrid({
     );
   }
   return (
-    <div className="rounded-2xl shadow overflow-hidden">
+    <div className="rounded-none sm:rounded-2xl shadow-none sm:shadow overflow-hidden">
       <div className="max-h-[80vh] overflow-auto">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-20 bg-white">
