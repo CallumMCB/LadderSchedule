@@ -21,9 +21,10 @@ interface WeatherCellProps {
   slotKey: string;
   className?: string;
   showWeather?: boolean;
+  canLoadWeather?: boolean;
 }
 
-export function WeatherCell({ slotKey, className = "", showWeather = true }: WeatherCellProps) {
+export function WeatherCell({ slotKey, className = "", showWeather = true, canLoadWeather = true }: WeatherCellProps) {
   const [weatherInfo, setWeatherInfo] = useState<{
     emoji: string;
     temperature: string;
@@ -34,9 +35,9 @@ export function WeatherCell({ slotKey, className = "", showWeather = true }: Wea
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    // Only fetch for future times
+    // Only fetch for future times and when weather loading is allowed
     const isPastTime = new Date(slotKey) < new Date();
-    if (isPastTime) return;
+    if (isPastTime || !canLoadWeather) return;
 
     // Extract date info from slotKey for API call
     const slotDate = new Date(slotKey);
@@ -70,7 +71,7 @@ export function WeatherCell({ slotKey, className = "", showWeather = true }: Wea
     };
 
     fetchWeather();
-  }, [slotKey]);
+  }, [slotKey, canLoadWeather]);
 
   if (!weatherInfo || !showWeather) return null;
 

@@ -155,6 +155,7 @@ export default function TennisLadderScheduler() {
   
   // Weather display state
   const [showWeather, setShowWeather] = useState(true); // Show weather by default
+  const [weatherCanLoad, setWeatherCanLoad] = useState(false); // Control when weather can load
   
   // Note: Weather display now handled by individual WeatherCell components
   const [showHiddenTeams, setShowHiddenTeams] = useState(false);
@@ -1162,6 +1163,9 @@ export default function TennisLadderScheduler() {
     try {
       const ladderId = ladderInfo?.currentLadder?.id;
       
+      // Reset weather loading flag at the start
+      setWeatherCanLoad(false);
+      
       // Load all matches for the current ladder
       const matchesResponse = await fetch(`/api/matches/all${ladderId ? `?ladderId=${ladderId}` : ''}`);
       if (matchesResponse.ok) {
@@ -1213,6 +1217,9 @@ export default function TennisLadderScheduler() {
       
       console.log('Loaded availability for', availabilityMap.size, 'weeks');
       setAllAvailabilities(availabilityMap);
+      
+      // Now that availability is loaded, allow weather to load
+      setWeatherCanLoad(true);
       
       // Load recent activities
       await loadRecentActivities();
@@ -1612,6 +1619,7 @@ export default function TennisLadderScheduler() {
         showLateTimes={showLateTimes}
         showHiddenTeams={showHiddenTeams}
         showWeather={showWeather}
+        weatherCanLoad={weatherCanLoad}
       />
 
       <details>
@@ -2293,7 +2301,8 @@ function AvailabilityGrid({
   showEarlyTimes,
   showLateTimes,
   showHiddenTeams,
-  showWeather
+  showWeather,
+  weatherCanLoad
 }: { 
   days: Date[]; 
   myAvail: Set<string>; 
@@ -2341,6 +2350,7 @@ function AvailabilityGrid({
   showLateTimes: boolean;
   showHiddenTeams: boolean;
   showWeather: boolean;
+  weatherCanLoad: boolean;
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
@@ -2942,7 +2952,7 @@ function AvailabilityGrid({
                     return (
                       <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel0} />
-                        <WeatherCell slotKey={key} showWeather={showWeather} />
+                        <WeatherCell slotKey={key} showWeather={showWeather} canLoadWeather={weatherCanLoad} />
                       </td>
                     );
                   })}
@@ -2961,7 +2971,7 @@ function AvailabilityGrid({
                     return (
                       <td key={c} className="p-0 align-top w-32 relative">
                         <TimeSlotVisual slotKey={key} rowLabel={rowLabel30} />
-                        <WeatherCell slotKey={key} showWeather={showWeather} />
+                        <WeatherCell slotKey={key} showWeather={showWeather} canLoadWeather={weatherCanLoad} />
                       </td>
                     );
                   })}
