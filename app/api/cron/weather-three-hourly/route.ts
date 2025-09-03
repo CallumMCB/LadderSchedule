@@ -67,7 +67,7 @@ function getWeatherDescription(weatherCode: string): string {
   return codes[weatherCode] || 'Variable conditions';
 }
 
-async function fetchMetOfficeHourlyWeather() {
+async function fetchMetOfficeThreeHourlyWeather() {
   if (!MET_OFFICE_API_KEY) {
     throw new Error('Met Office API key not configured');
   }
@@ -77,7 +77,7 @@ async function fetchMetOfficeHourlyWeather() {
   const longitude = -1.5317;
 
   const response = await fetch(
-    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
+    `https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/3hourly?latitude=${latitude}&longitude=${longitude}&includeLocationName=true`,
     {
       headers: {
         'accept': 'application/json',
@@ -88,19 +88,16 @@ async function fetchMetOfficeHourlyWeather() {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Met Office API error response:', errorText);
-    throw new Error(`Met Office API error: ${response.status} ${response.statusText}`);
+    console.error('Met Office three-hourly API error response:', errorText);
+    throw new Error(`Met Office three-hourly API error: ${response.status} ${response.statusText}`);
   }
 
   return response.json();
 }
 
 /**
- * Smart weather update endpoint with different update frequencies:
- * - Today: Update every hour
- * - This week (days 1-7): Update every 2 hours
- * - Next week (days 8-14): Update every 6 hours
- * - Only cache hours between 6am and 10pm (tennis playing hours)
+ * Three-hourly weather update endpoint for extended 7-day coverage
+ * Covers days 3-7 with 3-hourly intervals (after hourly data ends)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -115,80 +112,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🌤️ Starting smart hourly weather cache update...');
+    console.log('🌤️ Starting three-hourly weather cache update...');
     
     // Fetch weather data from Met Office
-    const weatherData = await fetchMetOfficeHourlyWeather();
+    const weatherData = await fetchMetOfficeThreeHourlyWeather();
+    
+    console.log('Three-hourly Weather API - Raw response keys:', Object.keys(weatherData));
     
     if (!weatherData?.features?.[0]?.properties?.timeSeries) {
-      throw new Error('Invalid hourly weather data format');
+      throw new Error('Invalid three-hourly weather data format');
     }
 
     const timeSeries = weatherData.features[0].properties.timeSeries;
     let updatedCount = 0;
-    const updateType = request.nextUrl.searchParams.get('type') || 'smart';
     
     // Get current British time
     const now = new Date();
     const britishNow = convertToBritishTime(now);
     const todayStart = new Date(britishNow.getFullYear(), britishNow.getMonth(), britishNow.getDate());
     
-    // Determine which hours to update based on update type
-    let shouldUpdate = (forecastHour: Date) => {
-      const hourOfDay = forecastHour.getHours();
-      
-      // Only process tennis playing hours (6am to 10pm)
-      if (hourOfDay < 6 || hourOfDay > 22) return false;
-      
-      const daysFromToday = Math.floor((forecastHour.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // Skip data older than today
-      if (daysFromToday < 0) return false;
-      
-      // Don't update beyond 2 days (48 hours) - three-hourly API handles days 3-7
-      if (daysFromToday >= 2) return false;
-      
-      // Handle specific update types
-      if (updateType === 'all') return true;
-      
-      if (updateType === 'today') {
-        // Today only
-        return daysFromToday === 0;
-      }
-      
-      if (updateType === 'week') {
-        // This week (days 1-7)
-        return daysFromToday >= 1 && daysFromToday <= 7;
-      }
-      
-      if (updateType === 'extended') {
-        // Extended forecast (days 8-14)
-        return daysFromToday >= 8 && daysFromToday < 14;
-      }
-      
-      // Default smart update logic
-      if (daysFromToday === 0) {
-        // Today: always update (hourly updates)
-        return true;
-      } else if (daysFromToday <= 7) {
-        // This week (days 1-7): always update for now
-        return true;
-      } else {
-        // Next week (days 8-14): always update for now
-        return true;
-      }
-    };
+    // Only process forecasts after 48 hours (when hourly data ends) up to 7 days
+    const hourlyEndTime = new Date(todayStart);
+    hourlyEndTime.setHours(todayStart.getHours() + 48);
     
-    // Process hourly forecasts
+    const maxForecastTime = new Date(todayStart);
+    maxForecastTime.setDate(maxForecastTime.getDate() + 7);
+    
+    // Process three-hourly forecasts
     for (const forecast of timeSeries) {
       const forecastDateTime = new Date(forecast.time);
       const britishDateTime = convertToBritishTime(forecastDateTime);
       
-      if (!shouldUpdate(britishDateTime)) continue;
+      // Only process data after hourly coverage ends (48 hours) and within 7 days
+      if (britishDateTime <= hourlyEndTime || britishDateTime > maxForecastTime) {
+        continue;
+      }
+      
+      // Only process tennis playing hours (6am to 10pm) and three-hourly slots (0, 3, 6, 9, 12, 15, 18, 21)
+      const hourOfDay = britishDateTime.getHours();
+      if (hourOfDay < 6 || hourOfDay > 21 || hourOfDay % 3 !== 0) {
+        continue;
+      }
       
       try {
-        // Upsert hourly weather cache entry
-        await prisma.hourlyWeatherCache.upsert({
+        // Upsert three-hourly weather cache entry
+        await prisma.threeHourlyWeatherCache.upsert({
           where: { datetime: britishDateTime },
           update: {
             temperature: forecast.screenTemperature,
@@ -226,15 +194,16 @@ export async function POST(request: NextRequest) {
         
         updatedCount++;
       } catch (error) {
-        console.error(`Failed to update hourly weather for ${britishDateTime.toISOString()}:`, error);
+        console.error(`Failed to update three-hourly weather for ${britishDateTime.toISOString()}:`, error);
       }
     }
 
-    // Clean up ALL past weather data (anything before 6am today)
+    // Clean up old three-hourly weather data (older than 2 days)
     const cleanupCutoff = new Date(todayStart);
-    cleanupCutoff.setHours(6, 0, 0, 0); // 6am today in British time
+    cleanupCutoff.setDate(cleanupCutoff.getDate() - 2);
+    cleanupCutoff.setHours(6, 0, 0, 0);
     
-    const deletedCount = await prisma.hourlyWeatherCache.deleteMany({
+    const deletedCount = await prisma.threeHourlyWeatherCache.deleteMany({
       where: {
         datetime: {
           lt: cleanupCutoff
@@ -242,21 +211,21 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log(`✅ Hourly weather cache updated: ${updatedCount} forecasts (${updateType} mode), ${deletedCount.count} old records cleaned`);
+    console.log(`✅ Three-hourly weather cache updated: ${updatedCount} forecasts, ${deletedCount.count} old records cleaned`);
     
     return NextResponse.json({
       success: true,
-      message: `Updated ${updatedCount} hourly weather forecasts (${updateType} mode), cleaned ${deletedCount.count} old records`,
+      message: `Updated ${updatedCount} three-hourly weather forecasts (days 3-7), cleaned ${deletedCount.count} old records`,
       updatedCount,
       deletedCount: deletedCount.count,
-      updateType
+      coverage: '7 days (3-hourly after 48 hours)'
     });
 
   } catch (error) {
-    console.error('❌ Hourly weather cache update failed:', error);
+    console.error('❌ Three-hourly weather cache update failed:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to update hourly weather cache',
+        error: 'Failed to update three-hourly weather cache',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
@@ -266,6 +235,5 @@ export async function POST(request: NextRequest) {
 
 // Allow GET requests for manual testing
 export async function GET(request: NextRequest) {
-  // Just call the POST method for testing
   return POST(request);
 }
