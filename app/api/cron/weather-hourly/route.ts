@@ -58,10 +58,10 @@ function getWeatherDescription(weatherCode: string): string {
     '24': 'Ice shower',
     '25': 'Ice',
     '26': 'Thunder shower',
-    '27': 'Thunder',
+    '27': 'Thunderstorm',
     '28': 'Heavy rain and thunder',
     '29': 'Light snow and thunder',
-    '30': 'Heavy snow and thunder'
+    '30': 'Thunderstorm'
   };
   
   return codes[weatherCode] || 'Variable conditions';

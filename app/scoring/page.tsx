@@ -61,7 +61,8 @@ export default function ScoringPage() {
   const [matchFormat, setMatchFormat] = useState({
     sets: 3,
     gamesPerSet: 6,
-    winnerBy: 'sets' as 'sets' | 'games'
+    winnerBy: 'sets' as 'sets' | 'games',
+    decidingSetType: 'normal' as 'normal' | 'ctb'
   });
   const [showEditScoreModal, setShowEditScoreModal] = useState<{
     matchId: string;
@@ -1474,12 +1475,29 @@ export default function ScoringPage() {
                 </select>
               </div>
               
+              <div>
+                <label className="block text-sm font-medium mb-2">Deciding Set Type</label>
+                <select
+                  value={matchFormat.decidingSetType}
+                  onChange={(e) => setMatchFormat(prev => ({ ...prev, decidingSetType: e.target.value as 'normal' | 'ctb' }))}
+                  className="w-full p-2 border rounded-lg"
+                >
+                  <option value="normal">Normal Set</option>
+                  <option value="ctb">Championship Tie-Break (First to 10, Win by 2)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Championship tie-break allows flexible scoring (any score ≥10 with win by 2)
+                </p>
+              </div>
+              
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
                 <div className="font-medium text-blue-900 mb-1">Current Format:</div>
                 <div className="text-blue-800">
                   {matchFormat.sets === 1 ? '1 Set' : `Best of ${matchFormat.sets} Sets`} • {matchFormat.gamesPerSet} Games per Set
                   <br />
                   Winner: {matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
+                  <br />
+                  Deciding Set: {matchFormat.decidingSetType === 'ctb' ? 'Championship Tie-Break' : 'Normal Set'}
                 </div>
               </div>
             </div>
@@ -1575,9 +1593,14 @@ export default function ScoringPage() {
                       >
                         <option value="">-</option>
                         <option value="X">X (Not played)</option>
-                        {Array.from({ length: matchFormat.gamesPerSet + 2 }, (_, i) => (
-                          <option key={i} value={i.toString()}>{i}</option>
-                        ))}
+                        {(() => {
+                          // For CTB, allow flexible scoring on potentially deciding sets
+                          const isPotentialDecidingSet = matchFormat.decidingSetType === 'ctb' && setIndex >= Math.floor(matchFormat.sets / 2);
+                          const maxScore = isPotentialDecidingSet ? 20 : matchFormat.gamesPerSet + 2;
+                          return Array.from({ length: maxScore + 1 }, (_, i) => (
+                            <option key={i} value={i.toString()}>{i}</option>
+                          ));
+                        })()}
                       </select>
                     </div>
                     
@@ -1600,9 +1623,14 @@ export default function ScoringPage() {
                       >
                         <option value="">-</option>
                         <option value="X">X (Not played)</option>
-                        {Array.from({ length: matchFormat.gamesPerSet + 2 }, (_, i) => (
-                          <option key={i} value={i.toString()}>{i}</option>
-                        ))}
+                        {(() => {
+                          // For CTB, allow flexible scoring on potentially deciding sets
+                          const isPotentialDecidingSet = matchFormat.decidingSetType === 'ctb' && setIndex >= Math.floor(matchFormat.sets / 2);
+                          const maxScore = isPotentialDecidingSet ? 20 : matchFormat.gamesPerSet + 2;
+                          return Array.from({ length: maxScore + 1 }, (_, i) => (
+                            <option key={i} value={i.toString()}>{i}</option>
+                          ));
+                        })()}
                       </select>
                     </div>
                   </div>
@@ -1615,6 +1643,8 @@ export default function ScoringPage() {
                   {matchFormat.sets === 1 ? '1 Set' : `Best of ${matchFormat.sets} Sets`} • {matchFormat.gamesPerSet} Games per Set
                   <br />
                   Winner: {matchFormat.winnerBy === 'sets' ? 'Most Sets' : 'Most Games'}
+                  <br />
+                  Deciding Set: {matchFormat.decidingSetType === 'ctb' ? 'Championship Tie-Break' : 'Normal Set'}
                 </div>
               </div>
             </div>
