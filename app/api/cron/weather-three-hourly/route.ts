@@ -117,24 +117,38 @@ export async function POST(request: NextRequest) {
       throw new Error('Invalid three-hourly weather data format');
     }
 
+    console.log(`📊 Met Office returned ${weatherData.features[0].properties.timeSeries.length} three-hourly forecasts`);
+
     const now = new Date();
     const britishNow = convertToBritishTime(now);
     const after48h = new Date(britishNow.getTime() + 48 * 60 * 60 * 1000);
     const until7d = new Date(britishNow.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+    console.log(`⏰ Time boundaries: Now=${britishNow.toISOString()}, After48h=${after48h.toISOString()}, Until7d=${until7d.toISOString()}`);
+
     let updatedCount = 0;
+    let skippedTime = 0, skippedHours = 0, skippedAlignment = 0;
 
     for (const forecast of weatherData.features[0].properties.timeSeries) {
       const forecastDateTime = new Date(forecast.time);
       const britishDateTime = convertToBritishTime(forecastDateTime);
 
-      // Only >48h and ≤7d
-      if (britishDateTime <= after48h || britishDateTime > until7d) continue;
+      // Only >48h and ≤7d 
+      if (britishDateTime <= after48h || britishDateTime > until7d) {
+        skippedTime++;
+        continue;
+      }
 
-      // Tennis hours & 3-hour alignment
+      // Tennis hours & 3-hour alignment (extend to 22:00 like hourly)
       const h = britishDateTime.getHours();
-      if (h < 6 || h > 21) continue;
-      if (h % 3 !== 0) continue;
+      if (h < 6 || h > 22) {
+        skippedHours++;
+        continue;
+      }
+      if (h % 3 !== 0) {
+        skippedAlignment++;
+        continue;
+      }
 
       try {
         await prisma.hourlyWeatherCache.upsert({
@@ -185,11 +199,14 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`✅ Three-hourly cache updated: ${updatedCount} rows, cleaned ${deletedCount.count} old rows`);
+    console.log(`📊 Debug stats: skippedTime=${skippedTime}, skippedHours=${skippedHours}, skippedAlignment=${skippedAlignment}`);
+    
     return NextResponse.json({
       success: true,
       message: `Updated ${updatedCount} three-hourly forecasts (48h–7d), cleaned ${deletedCount.count} old records`,
       updatedCount,
-      deletedCount: deletedCount.count
+      deletedCount: deletedCount.count,
+      debug: { skippedTime, skippedHours, skippedAlignment }
     });
 
   } catch (error) {
