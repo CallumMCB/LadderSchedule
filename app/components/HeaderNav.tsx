@@ -37,8 +37,17 @@ export default function HeaderNav({ session }: HeaderNavProps) {
   // Mobile Welcome Screen
   if (showMobileWelcome) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-500 to-purple-600 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          backgroundImage: 'url(/tennis-club-background.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        <div className="bg-white/85 backdrop-blur-sm rounded-lg shadow-xl p-6 w-full max-w-sm">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome!</h2>
             <p className="text-gray-600 text-sm">
