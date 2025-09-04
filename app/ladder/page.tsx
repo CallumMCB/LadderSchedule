@@ -302,6 +302,26 @@ export default function WholeLadderPage() {
     return sets[setIndex] || "";
   }
 
+  function getSetWinnerColor(team1Score: string, team2Score: string, setIndex: number): { team1Color: string, team2Color: string } {
+    const set1Score = getSetScore(team1Score, setIndex);
+    const set2Score = getSetScore(team2Score, setIndex);
+    
+    if (!set1Score || !set2Score || set1Score === 'X' || set2Score === 'X') {
+      return { team1Color: 'bg-white', team2Color: 'bg-white' };
+    }
+    
+    const score1 = parseInt(set1Score) || 0;
+    const score2 = parseInt(set2Score) || 0;
+    
+    if (score1 > score2) {
+      return { team1Color: 'bg-green-100', team2Color: 'bg-red-100' };
+    } else if (score2 > score1) {
+      return { team1Color: 'bg-red-100', team2Color: 'bg-green-100' };
+    } else {
+      return { team1Color: 'bg-white', team2Color: 'bg-white' };
+    }
+  }
+
   function formatScore(match: Match, isTeam1First: boolean) {
     if (!match.completed || match.team1Score === null || match.team2Score === null) {
       return null;
@@ -563,13 +583,16 @@ export default function WholeLadderPage() {
                                                   style={{ backgroundColor: rowTeam.color }}
                                                 />
                                               </td>
-                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => (
-                                                <td key={setIndex}>
-                                                  <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
-                                                    {getSetScore(rowTeamScore, setIndex) || '0'}
-                                                  </div>
-                                                </td>
-                                              ))}
+                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => {
+                                                const colors = getSetWinnerColor(rowTeamScore, colTeamScore, setIndex);
+                                                return (
+                                                  <td key={setIndex}>
+                                                    <div className={`w-9 h-5 text-center text-xs border rounded flex items-center justify-center ${colors.team1Color}`}>
+                                                      {getSetScore(rowTeamScore, setIndex) || '0'}
+                                                    </div>
+                                                  </td>
+                                                );
+                                              })}
                                             </tr>
                                             
                                             {/* Column team scores */}
@@ -580,13 +603,16 @@ export default function WholeLadderPage() {
                                                   style={{ backgroundColor: colTeam.color }}
                                                 />
                                               </td>
-                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => (
-                                                <td key={setIndex}>
-                                                  <div className="w-9 h-5 text-center text-xs border rounded flex items-center justify-center bg-white">
-                                                    {getSetScore(colTeamScore, setIndex) || '0'}
-                                                  </div>
-                                                </td>
-                                              ))}
+                                              {Array.from({ length: ladder.matchFormat?.sets || 3 }, (_, setIndex) => {
+                                                const colors = getSetWinnerColor(rowTeamScore, colTeamScore, setIndex);
+                                                return (
+                                                  <td key={setIndex}>
+                                                    <div className={`w-9 h-5 text-center text-xs border rounded flex items-center justify-center ${colors.team2Color}`}>
+                                                      {getSetScore(colTeamScore, setIndex) || '0'}
+                                                    </div>
+                                                  </td>
+                                                );
+                                              })}
                                             </tr>
                                           </tbody>
                                         </table>

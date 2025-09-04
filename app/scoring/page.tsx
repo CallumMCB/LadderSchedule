@@ -182,6 +182,32 @@ export default function ScoringPage() {
     return `${firstName1} & ${firstName2}`;
   }
 
+  function getSetScore(scoreString: string, setIndex: number): string {
+    if (!scoreString) return "";
+    const sets = scoreString.split(',');
+    return sets[setIndex] || "";
+  }
+
+  function getSetWinnerColor(team1Score: string, team2Score: string, setIndex: number): { team1Color: string, team2Color: string } {
+    const set1Score = getSetScore(team1Score, setIndex);
+    const set2Score = getSetScore(team2Score, setIndex);
+    
+    if (!set1Score || !set2Score || set1Score === 'X' || set2Score === 'X') {
+      return { team1Color: 'bg-white', team2Color: 'bg-white' };
+    }
+    
+    const score1 = parseInt(set1Score) || 0;
+    const score2 = parseInt(set2Score) || 0;
+    
+    if (score1 > score2) {
+      return { team1Color: 'bg-green-100', team2Color: 'bg-red-100' };
+    } else if (score2 > score1) {
+      return { team1Color: 'bg-red-100', team2Color: 'bg-green-100' };
+    } else {
+      return { team1Color: 'bg-white', team2Color: 'bg-white' };
+    }
+  }
+
   function getMatchBetweenTeams(team1Id: string, team2Id: string): Match | undefined {
     return teamsData.matches.find(match => 
       (match.team1Id === team1Id && match.team2Id === team2Id) ||
@@ -219,12 +245,6 @@ export default function ScoringPage() {
     results.sort((a, b) => new Date(a.match.startAt).getTime() - new Date(b.match.startAt).getTime());
     
     return results;
-  }
-
-  function getSetScore(scoreString: string, setIndex: number): string {
-    if (!scoreString) return "";
-    const sets = scoreString.split(',');
-    return sets[setIndex] || "";
   }
 
   function updateSetScore(matchId: string, field: 'team1Score' | 'team2Score', setIndex: number, value: string) {
@@ -987,39 +1007,56 @@ export default function ScoringPage() {
                             return (
                               <td key={colTeam.id} className="p-2">
                                 <div className="flex justify-center">
-                                  {/* Desktop: Detailed view with games per set */}
+                                  {/* Desktop: Sub-table format like ladder page */}
                                   <div className="hidden md:block">
                                     <div
                                       onClick={() => openEditScoreModal(match.id, rowTeam, colTeam)}
                                       className="cursor-pointer hover:bg-gray-50 rounded p-1 transition-colors"
                                       title="Click to edit scores"
                                     >
-                                      <div className="text-xs space-y-1">
-                                        {Array.from({ length: maxSets }, (_, setIndex) => {
-                                          const rowSetScore = rowSets[setIndex] || '';
-                                          const colSetScore = colSets[setIndex] || '';
-                                          const rowSetWon = parseInt(rowSetScore) > parseInt(colSetScore);
-                                          const colSetWon = parseInt(colSetScore) > parseInt(rowSetScore);
+                                      <table className="text-xs border-collapse">
+                                        <tbody>
+                                          {/* Row team scores */}
+                                          <tr>
+                                            <td className="pr-2 text-center">
+                                              <div 
+                                                className="w-2 h-2 rounded-full mx-auto"
+                                                style={{ backgroundColor: rowTeam.color }}
+                                              />
+                                            </td>
+                                            {Array.from({ length: matchFormat?.sets || 3 }, (_, setIndex) => {
+                                              const colors = getSetWinnerColor(rowScoreString, colScoreString, setIndex);
+                                              return (
+                                                <td key={setIndex}>
+                                                  <div className={`w-9 h-5 text-center text-xs border rounded flex items-center justify-center ${colors.team1Color}`}>
+                                                    {getSetScore(rowScoreString, setIndex) || '0'}
+                                                  </div>
+                                                </td>
+                                              );
+                                            })}
+                                          </tr>
                                           
-                                          return (
-                                            <div key={setIndex} className="flex items-center justify-center gap-1">
-                                              <div className={`px-1 py-0.5 rounded text-xs min-w-[20px] text-center ${
-                                                rowSetWon ? 'bg-green-100 text-green-800 font-semibold' : 
-                                                colSetWon ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                                              }`}>
-                                                {rowSetScore}
-                                              </div>
-                                              <div className="text-gray-400 text-xs">-</div>
-                                              <div className={`px-1 py-0.5 rounded text-xs min-w-[20px] text-center ${
-                                                colSetWon ? 'bg-green-100 text-green-800 font-semibold' : 
-                                                rowSetWon ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                                              }`}>
-                                                {colSetScore}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
+                                          {/* Column team scores */}
+                                          <tr>
+                                            <td className="pr-2 text-center">
+                                              <div 
+                                                className="w-2 h-2 rounded-full mx-auto"
+                                                style={{ backgroundColor: colTeam.color }}
+                                              />
+                                            </td>
+                                            {Array.from({ length: matchFormat?.sets || 3 }, (_, setIndex) => {
+                                              const colors = getSetWinnerColor(rowScoreString, colScoreString, setIndex);
+                                              return (
+                                                <td key={setIndex}>
+                                                  <div className={`w-9 h-5 text-center text-xs border rounded flex items-center justify-center ${colors.team2Color}`}>
+                                                    {getSetScore(colScoreString, setIndex) || '0'}
+                                                  </div>
+                                                </td>
+                                              );
+                                            })}
+                                          </tr>
+                                        </tbody>
+                                      </table>
                                     </div>
                                   </div>
                                   
