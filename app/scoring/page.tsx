@@ -992,8 +992,8 @@ export default function ScoringPage() {
 
                           // Check if match is completed
                           if (match.completed && match.team1Score !== null && match.team2Score !== null) {
-                            const rowScoreString = isRowTeamFirst ? rowTeamScore : colTeamScore;
-                            const colScoreString = isRowTeamFirst ? colTeamScore : rowTeamScore;
+                            const rowScoreString = rowTeamScore;
+                            const colScoreString = colTeamScore;
                             const rowSetsWon = isRowTeamFirst ? match.team1Score : match.team2Score;
                             const colSetsWon = isRowTeamFirst ? match.team2Score : match.team1Score;
                             const rowWon = (rowSetsWon ?? 0) > (colSetsWon ?? 0);
