@@ -160,7 +160,6 @@ export default function TennisLadderScheduler() {
   // Note: Weather display now handled by individual WeatherCell components
   const [showHiddenTeams, setShowHiddenTeams] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
-  const [showMobileWelcome, setShowMobileWelcome] = useState(false);
   const [recentActivities, setRecentActivities] = useState<Array<{
     type: string;
     timestamp: string;
@@ -221,15 +220,6 @@ export default function TennisLadderScheduler() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Show mobile welcome screen on first visit
-  useEffect(() => {
-    const isMobileDevice = window.innerWidth < 768; // sm breakpoint
-    const hasVisited = localStorage.getItem('tennis-ladder-visited');
-    
-    if (isMobileDevice && !hasVisited) {
-      setShowMobileWelcome(true);
-    }
-  }, []);
 
   // Mobile navigation functions
   function navigateDays(direction: 'prev' | 'next') {
@@ -1386,74 +1376,6 @@ export default function TennisLadderScheduler() {
     `Ends: ${ladderEndDate.toLocaleDateString()}` : 
     'End date not set';
 
-  // Mobile Welcome Screen
-  if (showMobileWelcome) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-500 to-purple-600 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-          <div className="text-center mb-6">
-            <div className="text-3xl mb-2">🎾</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Tennis Ladder</h1>
-            <p className="text-gray-600">Choose where to start</p>
-          </div>
-          
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                localStorage.setItem('tennis-ladder-visited', 'true');
-                setShowMobileWelcome(false);
-              }}
-              className="w-full bg-blue-500 text-white p-4 rounded-lg font-medium hover:bg-blue-600 transition-colors"
-            >
-              📅 Calendar & Scheduling
-            </button>
-            
-            <button
-              onClick={() => {
-                localStorage.setItem('tennis-ladder-visited', 'true');
-                window.location.href = '/scoring';
-              }}
-              className="w-full bg-green-500 text-white p-4 rounded-lg font-medium hover:bg-green-600 transition-colors"
-            >
-              📊 Scores & Results
-            </button>
-            
-            <button
-              onClick={() => {
-                localStorage.setItem('tennis-ladder-visited', 'true');
-                window.location.href = '/ladder';
-              }}
-              className="w-full bg-purple-500 text-white p-4 rounded-lg font-medium hover:bg-purple-600 transition-colors"
-            >
-              🏆 Ladder Standings
-            </button>
-            
-            <button
-              onClick={() => {
-                localStorage.setItem('tennis-ladder-visited', 'true');
-                window.location.href = '/profile';
-              }}
-              className="w-full bg-gray-500 text-white p-4 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-            >
-              👤 Profile & Settings
-            </button>
-          </div>
-          
-          <div className="text-center mt-4">
-            <button
-              onClick={() => {
-                localStorage.setItem('tennis-ladder-visited', 'true');
-                setShowMobileWelcome(false);
-              }}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Skip - Go to Calendar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full sm:max-w-6xl sm:mx-auto p-0 sm:p-4 space-y-0 sm:space-y-6">
