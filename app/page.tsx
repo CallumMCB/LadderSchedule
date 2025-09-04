@@ -2030,7 +2030,7 @@ export default function TennisLadderScheduler() {
                 size="sm"
                 className="shadow-lg hover:shadow-xl transition-shadow text-xs sm:text-sm"
               >
-                🔄 <span className="hidden sm:inline">Refresh Data</span>
+                🔄 <span className="hidden sm:inline">Refresh</span>
               </Button>
               <Button 
                 onClick={() => setShowClearConfirmation(true)}

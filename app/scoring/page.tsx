@@ -1575,7 +1575,7 @@ export default function ScoringPage() {
           size="lg"
           className="shadow-lg border-2"
         >
-          🔄 Refresh Data
+          🔄 Refresh
         </Button>
       </div>
 

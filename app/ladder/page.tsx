@@ -374,7 +374,7 @@ export default function WholeLadderPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-0 md:p-4 space-y-4 md:space-y-8">
+    <div className="w-full md:max-w-6xl md:mx-auto p-0 md:p-4 space-y-0 md:space-y-8">
       <div className="flex items-center justify-between px-4 md:px-0">
         <h1 className="text-3xl font-bold">Whole Ladder {viewMode === 'summary' ? 'Standings' : 'Scores'}</h1>
         <div className="flex items-center gap-4">
@@ -402,7 +402,7 @@ export default function WholeLadderPage() {
             </button>
           </div>
           <Button onClick={loadAllLadders} variant="outline">
-            🔄 Refresh Data
+            🔄 Refresh
           </Button>
         </div>
       </div>
@@ -412,12 +412,12 @@ export default function WholeLadderPage() {
           No ladders found.
         </div>
       ) : (
-        <div className="space-y-4 md:space-y-8">
+        <div className="space-y-0 md:space-y-8">
           {ladders.map(ladder => {
             const standings = getLadderStandings(ladder);
             
             return (
-              <Card key={ladder.id} className="md:shadow-md md:border md:rounded-lg shadow-none border-none rounded-none">
+              <Card key={ladder.id} className="w-full md:shadow-md md:border md:rounded-lg shadow-none border-none rounded-none">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -438,7 +438,7 @@ export default function WholeLadderPage() {
                     </div>
                   ) : viewMode === 'summary' ? (
                     // Summary View (Rankings Table)
-                    <div className="overflow-auto md:rounded-lg md:border rounded-none border-none">
+                    <div className="w-full overflow-auto md:rounded-lg md:border rounded-none border-none">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b bg-muted/50">
@@ -500,7 +500,7 @@ export default function WholeLadderPage() {
                     </div>
                   ) : (
                     // Scores View (Match Results Table) - Matching scoring page style
-                    <div className="overflow-auto rounded-lg border">
+                    <div className="w-full overflow-auto md:rounded-lg md:border rounded-none border-none">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b bg-muted/50">
