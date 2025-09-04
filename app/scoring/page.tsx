@@ -1068,11 +1068,17 @@ export default function ScoringPage() {
                                       title="Click to view/edit scores"
                                     >
                                       <div className="flex items-center justify-center gap-1 text-sm font-semibold">
-                                        <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${rowWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                        <div 
+                                          className={`px-2 py-1 rounded text-white min-w-[24px] text-center border-2 ${rowWon ? 'bg-green-500' : 'bg-red-500'}`}
+                                          style={{ borderColor: rowTeam.color }}
+                                        >
                                           {rowSetsWon}
                                         </div>
                                         <div className="text-gray-400">-</div>
-                                        <div className={`px-2 py-1 rounded text-white min-w-[24px] text-center ${colWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                                        <div 
+                                          className={`px-2 py-1 rounded text-white min-w-[24px] text-center border-2 ${colWon ? 'bg-green-500' : 'bg-red-500'}`}
+                                          style={{ borderColor: colTeam.color }}
+                                        >
                                           {colSetsWon}
                                         </div>
                                       </div>
