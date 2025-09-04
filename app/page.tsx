@@ -152,6 +152,7 @@ export default function TennisLadderScheduler() {
   // Time range display state
   const [showEarlyTimes, setShowEarlyTimes] = useState(false); // Show 6am-9:30am
   const [showLateTimes, setShowLateTimes] = useState(false); // Show 9pm-10pm
+  const [isFullScreen, setIsFullScreen] = useState(false); // Full screen mode for mobile
   
   // Weather display state
   const [showWeather, setShowWeather] = useState(true); // Show weather by default
@@ -1377,6 +1378,59 @@ export default function TennisLadderScheduler() {
     'End date not set';
 
 
+  // Full screen calendar component
+  if (isFullScreen) {
+    return (
+      <div className="fixed inset-0 bg-white z-40 overflow-hidden flex flex-col">
+        {/* Full screen header */}
+        <div className="sticky top-0 bg-white border-b z-50 p-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Calendar</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullScreen(false)}
+              className="text-xs"
+            >
+              ✕ Close
+            </Button>
+          </div>
+        </div>
+        
+        {/* Full screen calendar grid */}
+        <div className="flex-1 overflow-auto">
+          <AvailabilityGrid 
+            days={days} 
+            myAvail={myAvail} 
+            myUnavail={myUnavail}
+            partnerAvail={partnerAvail} 
+            teamsData={teamsData}
+            onToggle={toggleMySlot}
+            onDoubleClick={handleDoubleClick}
+            onCancelMatch={cancelMatch}
+            onShowMatchConfirmation={setShowMatchConfirmation}
+            onShowCancelConfirmation={setShowCancelConfirmation}
+            actingAsTeam={actingAsTeam}
+            actingAsPlayer={actingAsPlayer}
+            proxyAvail={proxyAvail}
+            proxyUnavail={proxyUnavail}
+            selectedSlots={selectedSlots}
+            blockSelectCorners={blockSelectCorners}
+            isBlockSelectMode={isBlockSelectMode}
+            onBlockSelectClick={handleBlockSelectClick}
+            ladderInfo={ladderInfo}
+            showEarlyTimes={showEarlyTimes}
+            showLateTimes={showLateTimes}
+            showHiddenTeams={showHiddenTeams}
+            showWeather={showWeather}
+            weatherCanLoad={weatherCanLoad}
+            isFullScreen={true}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full sm:max-w-6xl sm:mx-auto p-0 sm:p-4 space-y-0 sm:space-y-6">
       {/* Ladder Info Header */}
@@ -1584,6 +1638,14 @@ export default function TennisLadderScheduler() {
               className="text-xs whitespace-nowrap"
             >
               {showLateTimes ? "Hide" : "Show"} late
+            </Button>
+            <Button
+              variant={isFullScreen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="text-xs whitespace-nowrap sm:hidden"
+            >
+              {isFullScreen ? "Exit" : "Full Screen"}
             </Button>
           </div>
         </div>
@@ -2267,7 +2329,8 @@ function AvailabilityGrid({
   showLateTimes,
   showHiddenTeams,
   showWeather,
-  weatherCanLoad
+  weatherCanLoad,
+  isFullScreen
 }: { 
   days: Date[]; 
   myAvail: Set<string>; 
@@ -2316,6 +2379,7 @@ function AvailabilityGrid({
   showHiddenTeams: boolean;
   showWeather: boolean;
   weatherCanLoad: boolean;
+  isFullScreen?: boolean;
 }) {
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
   
@@ -2898,11 +2962,11 @@ function AvailabilityGrid({
   }
   return (
     <div className="rounded-none sm:rounded-2xl shadow-none sm:shadow overflow-hidden">
-      <div className="max-h-[80vh] overflow-auto">
+      <div className={`overflow-auto ${isFullScreen ? 'h-full' : 'max-h-[80vh]'}`}>
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-20 bg-white">
             <tr>
-              <th className="bg-white border p-2 text-left shadow-sm">Time</th>
+              <th className={`bg-white border p-2 text-left shadow-sm ${isFullScreen ? 'sticky left-0 z-30' : ''}`}>Time</th>
               {days.map((d, i) => {
                 const dayOfWeek = d.getDay();
                 const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
@@ -2937,7 +3001,7 @@ function AvailabilityGrid({
               const r0 = hourIndex * 2;
               rows.push(
                 <tr key={`${hour}-00`} className="odd:bg-muted/20">
-                  <td className="bg-white border p-2 align-top text-sm font-medium">{rowLabel0}</td>
+                  <td className={`bg-white border p-2 align-top text-sm font-medium ${isFullScreen ? 'sticky left-0 z-10' : ''}`}>{rowLabel0}</td>
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute0);
                     return (
@@ -2956,7 +3020,7 @@ function AvailabilityGrid({
               const r30 = hourIndex * 2 + 1;
               rows.push(
                 <tr key={`${hour}-30`} className="odd:bg-muted/20">
-                  <td className="bg-white border p-2 align-top text-sm font-medium">{rowLabel30}</td>
+                  <td className={`bg-white border p-2 align-top text-sm font-medium ${isFullScreen ? 'sticky left-0 z-10' : ''}`}>{rowLabel30}</td>
                   {days.map((d, c) => {
                     const key = isoAt(d, hour, minute30);
                     return (
