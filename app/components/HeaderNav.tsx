@@ -105,6 +105,28 @@ export default function HeaderNav({ session }: HeaderNavProps) {
             </Link>
           </div>
           
+          {/* Brownian Solutions Branding */}
+          <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+              <span>Made by</span>
+              <a 
+                href="https://brownian.solutions" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-gray-800 transition-colors font-medium flex items-center gap-2"
+              >
+                <img 
+                  src="/brownian-solutions-logo.png" 
+                  alt="Brownian Solutions" 
+                  width="16" 
+                  height="16"
+                  className="inline-block"
+                />
+                Brownian Solutions
+              </a>
+            </div>
+          </div>
+          
           <button
             onClick={handleWelcomeClose}
             className="w-full mt-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
