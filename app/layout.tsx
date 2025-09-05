@@ -21,7 +21,7 @@ return (
   backgroundRepeat: 'no-repeat',
   backgroundAttachment: 'fixed'
 }}>
-<div className="min-h-screen bg-white/85 backdrop-blur-sm">
+<div className="min-h-screen bg-white/85">
 <Providers>
 <div className="max-w-6xl mx-auto p-4">
 <HeaderNav session={session} />
