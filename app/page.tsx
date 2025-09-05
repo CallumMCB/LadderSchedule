@@ -53,6 +53,7 @@ function buildSlotsForWeek(weekStart: Date) {
 
 export default function TennisLadderScheduler() {
   const { data: session } = useSession();
+  const [showMobileWelcome, setShowMobileWelcome] = useState(false);
   const [partnerEmail, setPartnerEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
@@ -263,6 +264,20 @@ export default function TennisLadderScheduler() {
   useEffect(() => {
     if (session) {
       loadLadderInfo();
+    }
+  }, [session]);
+
+  // Check if mobile welcome should be shown
+  useEffect(() => {
+    if (session && typeof window !== 'undefined') {
+      const hasSeenWelcome = localStorage.getItem('hasSeenMobileWelcome');
+      const isMobile = window.innerWidth < 768;
+      
+      if (!hasSeenWelcome && isMobile) {
+        setShowMobileWelcome(true);
+      } else {
+        setShowMobileWelcome(false);
+      }
     }
   }, [session]);
 
@@ -2004,6 +2019,7 @@ export default function TennisLadderScheduler() {
       )}
 
       {/* Bottom Left Settings Menu */}
+      {!showMobileWelcome && (
       <div className="fixed bottom-4 left-2 sm:bottom-6 sm:left-6 z-[9999]" style={{ zIndex: 9999 }}>
         <div className="flex flex-col items-start gap-1 sm:gap-2">
           {/* Expanded settings */}
@@ -2064,8 +2080,10 @@ export default function TennisLadderScheduler() {
           </Button>
         </div>
       </div>
+      )}
 
       {/* Bottom Right Action Buttons */}
+      {!showMobileWelcome && (
       <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-[9999]" style={{ zIndex: 9999 }}>
         <div className="flex flex-col items-end gap-1 sm:gap-2">
           {saveMsg && (
@@ -2100,6 +2118,7 @@ export default function TennisLadderScheduler() {
           )}
         </div>
       </div>
+      )}
 
       {/* Mobile Date Range Picker Modal */}
       {showDateRangePicker && (
