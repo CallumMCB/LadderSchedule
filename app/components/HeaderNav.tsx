@@ -109,12 +109,7 @@ export default function HeaderNav({ session }: HeaderNavProps) {
           <div className="mt-4 pt-4 border-t border-gray-200 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
               <span>Made by</span>
-              <a 
-                href="https://brownian.solutions" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:text-gray-800 transition-colors font-medium flex items-center gap-2"
-              >
+              <div className="font-medium flex items-center gap-2">
                 <img 
                   src="/brownian-solutions-logo.png" 
                   alt="Brownian Solutions" 
@@ -123,7 +118,7 @@ export default function HeaderNav({ session }: HeaderNavProps) {
                   className="inline-block"
                 />
                 Brownian Solutions
-              </a>
+              </div>
             </div>
           </div>
           

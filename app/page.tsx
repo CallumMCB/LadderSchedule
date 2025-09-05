@@ -2165,12 +2165,7 @@ export default function TennisLadderScheduler() {
       <div className="mt-6 text-center text-xs text-muted-foreground border-t pt-4">
         <div className="flex items-center justify-center gap-2">
           <span>Made by</span>
-          <a 
-            href="https://brownian.solutions" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="hover:text-foreground transition-colors font-medium flex items-center gap-2"
-          >
+          <div className="font-medium flex items-center gap-2">
             <img 
               src="/brownian-solutions-logo.png" 
               alt="Brownian Solutions" 
@@ -2179,7 +2174,7 @@ export default function TennisLadderScheduler() {
               className="inline-block"
             />
             Brownian Solutions
-          </a>
+          </div>
         </div>
       </div>
     </div>
