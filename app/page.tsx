@@ -2004,7 +2004,7 @@ export default function TennisLadderScheduler() {
       )}
 
       {/* Bottom Left Settings Menu */}
-      <div className="fixed bottom-4 left-2 sm:bottom-6 sm:left-6 z-[100]">
+      <div className="fixed bottom-4 left-2 sm:bottom-6 sm:left-6 z-[9999]" style={{ zIndex: 9999 }}>
         <div className="flex flex-col items-start gap-1 sm:gap-2">
           {/* Expanded settings */}
           {showMobileActions && (
@@ -2066,7 +2066,7 @@ export default function TennisLadderScheduler() {
       </div>
 
       {/* Bottom Right Action Buttons */}
-      <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-[100]">
+      <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-[9999]" style={{ zIndex: 9999 }}>
         <div className="flex flex-col items-end gap-1 sm:gap-2">
           {saveMsg && (
             <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 sm:px-3 sm:py-2 shadow-lg max-w-[200px] sm:max-w-none">
