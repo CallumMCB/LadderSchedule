@@ -2968,6 +2968,7 @@ function AvailabilityGrid({
             <tr>
               <th className={`bg-white border p-2 text-left shadow-sm ${isFullScreen ? 'sticky left-0 z-30' : ''}`}>Time</th>
               {days.map((d, i) => {
+                if (!d) return <th key={i} className="bg-white border p-2 text-left min-w-[120px] shadow-sm">Loading...</th>;
                 const dayOfWeek = d.getDay();
                 const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 indexing
                 return (
