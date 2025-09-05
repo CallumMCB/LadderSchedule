@@ -37,7 +37,8 @@ function isoAt(date: Date, hour: number, minute: number) {
   return d.toISOString();
 }
 
-function formatDate(d: Date) {
+function formatDate(d: Date | undefined) {
+  if (!d) return 'Loading...';
   return d.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
