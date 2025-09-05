@@ -18,30 +18,35 @@ export default function MobileNav() {
   ];
 
   return (
-    <div className="md:hidden absolute right-0">
-      {/* Ladder/Umpire Chair Button */}
+    <div className="md:hidden absolute right-4">
+      {/* Umpire Chair Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex flex-col justify-center items-center w-8 h-8 focus:outline-none relative"
+        className="flex justify-center items-center w-8 h-8 focus:outline-none"
       >
         {isOpen ? (
           // X when open
-          <div className="relative">
-            <div className="w-5 h-0.5 bg-gray-800 rotate-45 absolute" />
-            <div className="w-5 h-0.5 bg-gray-800 -rotate-45 absolute" />
+          <div className="relative w-5 h-5">
+            <div className="w-5 h-0.5 bg-gray-800 rotate-45 absolute top-1/2 left-0 transform -translate-y-1/2" />
+            <div className="w-5 h-0.5 bg-gray-800 -rotate-45 absolute top-1/2 left-0 transform -translate-y-1/2" />
           </div>
         ) : (
-          // Ladder when closed  
-          <div className="relative">
-            {/* Vertical ladder sides */}
-            <div className="w-0.5 h-6 bg-gray-800 absolute left-0" />
-            <div className="w-0.5 h-6 bg-gray-800 absolute right-0" />
-            {/* Horizontal ladder rungs */}
-            <div className="w-4 h-0.5 bg-gray-800 absolute top-1" />
-            <div className="w-4 h-0.5 bg-gray-800 absolute top-2.5" />
-            <div className="w-4 h-0.5 bg-gray-800 absolute top-4" />
-            <div className="w-4 h-0.5 bg-gray-800 absolute bottom-1" />
-          </div>
+          // Umpire Chair when closed  
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Legs */}
+            <line x1="8" y1="26" x2="14" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="24" y1="26" x2="18" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            
+            {/* Steps */}
+            <line x1="10" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth="2"/>
+            <line x1="11.5" y1="14" x2="20.5" y2="14" stroke="currentColor" strokeWidth="2"/>
+            
+            {/* Seat */}
+            <rect x="13.5" y="6.5" width="5" height="3" fill="currentColor" rx="0.5"/>
+            
+            {/* Backrest */}
+            <rect x="12.5" y="3" width="7" height="3" fill="currentColor" rx="0.5"/>
+          </svg>
         )}
       </button>
 
