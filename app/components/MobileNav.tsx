@@ -19,14 +19,30 @@ export default function MobileNav() {
 
   return (
     <div className="md:hidden absolute right-0">
-      {/* Hamburger Button */}
+      {/* Ladder/Umpire Chair Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex flex-col justify-center items-center w-8 h-8 space-y-1 focus:outline-none"
+        className="flex flex-col justify-center items-center w-8 h-8 focus:outline-none relative"
       >
-        <div className={`w-5 h-0.5 bg-gray-800 transition-transform duration-200 ${isOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-        <div className={`w-5 h-0.5 bg-gray-800 transition-opacity duration-200 ${isOpen ? 'opacity-0' : ''}`} />
-        <div className={`w-5 h-0.5 bg-gray-800 transition-transform duration-200 ${isOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
+        {isOpen ? (
+          // X when open
+          <div className="relative">
+            <div className="w-5 h-0.5 bg-gray-800 rotate-45 absolute" />
+            <div className="w-5 h-0.5 bg-gray-800 -rotate-45 absolute" />
+          </div>
+        ) : (
+          // Ladder when closed  
+          <div className="relative">
+            {/* Vertical ladder sides */}
+            <div className="w-0.5 h-6 bg-gray-800 absolute left-0" />
+            <div className="w-0.5 h-6 bg-gray-800 absolute right-0" />
+            {/* Horizontal ladder rungs */}
+            <div className="w-4 h-0.5 bg-gray-800 absolute top-1" />
+            <div className="w-4 h-0.5 bg-gray-800 absolute top-2.5" />
+            <div className="w-4 h-0.5 bg-gray-800 absolute top-4" />
+            <div className="w-4 h-0.5 bg-gray-800 absolute bottom-1" />
+          </div>
+        )}
       </button>
 
       {/* Dropdown Menu */}

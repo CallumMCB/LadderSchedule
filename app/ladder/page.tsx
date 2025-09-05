@@ -401,9 +401,6 @@ export default function WholeLadderPage() {
               Scores
             </button>
           </div>
-          <Button onClick={loadAllLadders} variant="outline">
-            🔄 Refresh
-          </Button>
         </div>
       </div>
 
@@ -643,6 +640,18 @@ export default function WholeLadderPage() {
           })}
         </div>
       )}
+
+      {/* Sticky Refresh Button */}
+      <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-[9999]" style={{ zIndex: 9999 }}>
+        <Button 
+          onClick={loadAllLadders} 
+          variant="outline"
+          size="lg"
+          className="shadow-lg hover:shadow-xl transition-shadow"
+        >
+          🔄 Refresh
+        </Button>
+      </div>
 
     </div>
   );
